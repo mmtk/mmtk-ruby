@@ -1,0 +1,153 @@
+// All functions here are extern function. There is no point for marking them as unsafe.
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
+
+use libc::c_char;
+use std::ffi::CStr;
+use mmtk::memory_manager;
+use mmtk::AllocationSemantics;
+use mmtk::util::{ObjectReference, OpaquePointer, Address};
+use mmtk::SelectedPlan;
+use mmtk::scheduler::GCWorker;
+use mmtk::Mutator;
+use mmtk::MMTK;
+use crate::Ruby;
+use crate::SINGLETON;
+
+#[no_mangle]
+pub extern "C" fn gc_init(heap_size: usize) {
+    // # Safety
+    // Casting `SINGLETON` as mutable is safe because `gc_init` will only be executed once by a single thread during startup.
+    #[allow(clippy::cast_ref_to_mut)]
+    let singleton_mut = unsafe { &mut *(&*SINGLETON as *const MMTK<Ruby> as *mut MMTK<Ruby>) };
+    memory_manager::gc_init(singleton_mut, heap_size)
+}
+
+#[no_mangle]
+pub extern "C" fn start_control_collector(tls: OpaquePointer) {
+    memory_manager::start_control_collector(&SINGLETON, tls);
+}
+
+#[no_mangle]
+pub extern "C" fn bind_mutator(tls: OpaquePointer) -> *mut Mutator<SelectedPlan<Ruby>> {
+    Box::into_raw(memory_manager::bind_mutator(&SINGLETON, tls))
+}
+
+#[no_mangle]
+pub extern "C" fn destroy_mutator(mutator: *mut Mutator<SelectedPlan<Ruby>>) {
+    memory_manager::destroy_mutator(unsafe { Box::from_raw(mutator) })
+}
+
+#[no_mangle]
+pub extern "C" fn alloc(mutator: *mut Mutator<SelectedPlan<Ruby>>, size: usize,
+                    align: usize, offset: isize, semantics: AllocationSemantics) -> Address {
+    memory_manager::alloc::<Ruby>(unsafe { &mut *mutator }, size, align, offset, semantics)
+}
+
+#[no_mangle]
+pub extern "C" fn post_alloc(mutator: *mut Mutator<SelectedPlan<Ruby>>, refer: ObjectReference, type_refer: ObjectReference,
+                                        bytes: usize, semantics: AllocationSemantics) {
+    memory_manager::post_alloc::<Ruby>(unsafe { &mut *mutator }, refer, type_refer, bytes, semantics)
+}
+
+#[no_mangle]
+pub extern "C" fn will_never_move(object: ObjectReference) -> bool {
+    !object.is_movable()
+}
+
+#[no_mangle]
+pub extern "C" fn start_worker(tls: OpaquePointer, worker: &'static mut GCWorker<Ruby>, mmtk: &'static MMTK<Ruby>) {
+    memory_manager::start_worker::<Ruby>(tls, worker, mmtk)
+}
+
+#[no_mangle]
+pub extern "C" fn enable_collection(tls: OpaquePointer) {
+    memory_manager::enable_collection(&SINGLETON, tls)
+}
+
+#[no_mangle]
+pub extern "C" fn used_bytes() -> usize {
+    memory_manager::used_bytes(&SINGLETON)
+}
+
+#[no_mangle]
+pub extern "C" fn free_bytes() -> usize {
+    memory_manager::free_bytes(&SINGLETON)
+}
+
+#[no_mangle]
+pub extern "C" fn total_bytes() -> usize {
+    memory_manager::total_bytes(&SINGLETON)
+}
+
+#[no_mangle]
+#[cfg(feature = "sanity")]
+pub extern "C" fn scan_region() {
+    memory_manager::scan_region(&SINGLETON)
+}
+
+#[no_mangle]
+pub extern "C" fn is_live_object(object: ObjectReference) -> bool{
+    object.is_live()
+}
+
+#[no_mangle]
+pub extern "C" fn is_mapped_object(object: ObjectReference) -> bool {
+    object.is_mapped()
+}
+
+#[no_mangle]
+pub extern "C" fn is_mapped_address(address: Address) -> bool {
+    address.is_mapped()
+}
+
+#[no_mangle]
+pub extern "C" fn modify_check(object: ObjectReference) {
+    memory_manager::modify_check(&SINGLETON, object)
+}
+
+#[no_mangle]
+pub extern "C" fn handle_user_collection_request(tls: OpaquePointer) {
+    memory_manager::handle_user_collection_request::<Ruby>(&SINGLETON, tls);
+}
+
+#[no_mangle]
+pub extern "C" fn add_weak_candidate(reff: ObjectReference, referent: ObjectReference) {
+    memory_manager::add_weak_candidate(&SINGLETON, reff, referent)
+}
+
+#[no_mangle]
+pub extern "C" fn add_soft_candidate(reff: ObjectReference, referent: ObjectReference) {
+    memory_manager::add_soft_candidate(&SINGLETON, reff, referent)
+}
+
+#[no_mangle]
+pub extern "C" fn add_phantom_candidate(reff: ObjectReference, referent: ObjectReference) {
+    memory_manager::add_phantom_candidate(&SINGLETON, reff, referent)
+}
+
+#[no_mangle]
+pub extern "C" fn harness_begin(tls: OpaquePointer) {
+    memory_manager::harness_begin(&SINGLETON, tls)
+}
+
+#[no_mangle]
+pub extern "C" fn harness_end(_tls: OpaquePointer) {
+    memory_manager::harness_end(&SINGLETON)
+}
+
+#[no_mangle]
+pub extern "C" fn process(name: *const c_char, value: *const c_char) -> bool {
+    let name_str: &CStr = unsafe { CStr::from_ptr(name) };
+    let value_str: &CStr = unsafe { CStr::from_ptr(value) };
+    memory_manager::process(&SINGLETON, name_str.to_str().unwrap(), value_str.to_str().unwrap())
+}
+
+#[no_mangle]
+pub extern "C" fn starting_heap_address() -> Address {
+    memory_manager::starting_heap_address()
+}
+
+#[no_mangle]
+pub extern "C" fn last_heap_address() -> Address {
+    memory_manager::last_heap_address()
+}

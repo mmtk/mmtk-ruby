@@ -1,0 +1,27 @@
+[package]
+name = "mmtk_ruby"
+version = "0.1.0"
+authors = ["Angus Atkinson <4848802+angussidney@users.noreply.github.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "mmtk_ruby"
+# be careful - Link-Time Optimisation (LTO) is only allowed for certain crate types
+crate-type = ["cdylib"]
+
+[profile.release]
+lto = true
+
+[dependencies]
+# Definitions for interoperating with C code on the ruby side
+libc = "0.2"
+lazy_static = "1.1"
+
+# Comment/uncomment for prod/local code respectively
+mmtk = { git = "ssh://git@github.com/mmtk/mmtk-core.git", rev = "966047a1d65e5143b1331f4e2644a1712538c790" }
+# mmtk = { path = "../repos/mmtk-core" }
+
+[features]
+nogc = ["mmtk/nogc"]
