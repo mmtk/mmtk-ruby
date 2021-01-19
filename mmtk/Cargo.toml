@@ -9,7 +9,7 @@ edition = "2018"
 [lib]
 name = "mmtk_ruby"
 # be careful - Link-Time Optimisation (LTO) is only allowed for certain crate types
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "staticlib"]
 
 [profile.release]
 lto = true
