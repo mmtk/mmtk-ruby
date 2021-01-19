@@ -2,9 +2,9 @@
 
 ## Installation/build instructions
 
-Changes to Ruby core language are avaliable [under my fork here](https://github.com/angussidney/ruby), on the branch `ruby_2_7`. This is required for compatiability with the mmtk-ruby binding.
+Changes to Ruby core language are avaliable [under my fork here](https://github.com/angussidney/ruby), on the branch `third-party-heap-2-7-2`. These modifications are required for compatiability with the mmtk-ruby binding. An overview of the changes can be viewed using [this diff](https://github.com/ruby/ruby/compare/ruby_2_7...angussidney:third-party-heap-2-7-2).
 
-Build MMTk, then copy `libmmtk_ruby.so` to `repos/ruby`.
+To build a copy of MMTk Ruby:
 
 ```bash
 # Clone sources
