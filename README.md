@@ -52,7 +52,20 @@ Known working:
  - `./miniruby ./basictest/test.rb`
  - `make test`
  - Regular Ruby programs (note: this hasn't been tested on any extensive real-world programs, only <100 line dummy programs)
- - Basic Rails 5 app utilising a sqlite3 database
+ - Basic Rails 5 app utilising a sqlite3 database:
+    ```bash
+    gem install rails -v 5.2.0
+    rails new hello
+    cd hello
+    rails generate scaffold User name:string email:string
+    rails db:migrate
+    rails server
+
+    # If you run into installation issues along the way, you may need to...
+    gem install sqlite3
+    gem install puma
+    # ...and try again
+    ```
 
 Known issues:
  - `make test-all` fails. Many tests are GC implementation-dependent, so exclusion files have been created to ignore most of these. There are still >50 errors, but not all have been triaged or fixed yet.
