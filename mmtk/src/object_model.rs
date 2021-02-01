@@ -7,6 +7,9 @@ use crate::Ruby;
 pub struct VMObjectModel {}
 
 impl ObjectModel<Ruby> for VMObjectModel {
+    const HAS_GC_BYTE: bool = true;
+    const GC_BYTE_OFFSET: isize = 0;
+
     fn copy(_from: ObjectReference, _semantics: AllocationSemantics, _copy_context: &mut impl CopyContext) -> ObjectReference {
         unimplemented!()
     }

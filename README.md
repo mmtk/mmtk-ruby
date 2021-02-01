@@ -17,7 +17,7 @@ cd ../mmtk
 
 # Build MMTk. Optionally edit Cargo.toml to use a local working copy
 # of mmtk-core rather than a fresh cloned copy
-export RUSTUP_TOOLCHAIN=nightly-2020-07-08
+export RUSTUP_TOOLCHAIN=nightly-2020-12-20
 export DEBUG_LEVEL=fastdebug
 # Add --release to include optimisations. Highly recommended when
 # not debugging (ields a huge performance increase)

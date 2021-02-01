@@ -12,7 +12,7 @@ impl ActivePlan<Ruby> for VMActivePlan {
         &SINGLETON.plan
     }
 
-    fn worker(_tls: OpaquePointer) -> &'static mut GCWorker<Ruby> {
+    unsafe fn worker(_tls: OpaquePointer) -> &'static mut GCWorker<Ruby> {
         unimplemented!()
     }
 
@@ -26,10 +26,6 @@ impl ActivePlan<Ruby> for VMActivePlan {
     }
 
     unsafe fn mutator(_tls: OpaquePointer) -> &'static mut <SelectedPlan<Ruby> as Plan>::Mutator {
-        unimplemented!()
-    }
-
-    fn collector_count() -> usize {
         unimplemented!()
     }
 
