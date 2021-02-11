@@ -11,29 +11,35 @@ To build a copy of MMTk Ruby:
 ```bash
 # Clone sources
 git clone https://github.com/angussidney/mmtk-ruby.git
-cd mmtk-ruby/repos
+cd mmtk-ruby
+git checkout 88dd50bc # Latest stable version of the binding
+mkdir repos && cd repos
 git clone https://github.com/angussidney/ruby.git
 cd ../mmtk
 
 # Build MMTk. Optionally edit Cargo.toml to use a local working copy
 # of mmtk-core rather than a fresh cloned copy
-export RUSTUP_TOOLCHAIN=nightly-2020-12-20
-export DEBUG_LEVEL=fastdebug
+export RUSTUP_TOOLCHAIN=nightly-2020-07-08
 # Add --release to include optimisations. Highly recommended when
-# not debugging (ields a huge performance increase)
+# not debugging (yields a huge performance increase)
 cargo build --features nogc
-cp target/debug/libmmtk_ruby.so ../repos/ruby/
+cp target/debug/libmmtk_ruby.* ../repos/ruby/
 
 # Build Ruby with MMTk enabled
 cd ../repos/ruby
 export LD_LIBRARY_PATH=$PWD
+autoconf
 # -O0/-ggdb3 flags are used for debugging, remove for release
+# Note: you will need to have a BASERUBY installed to run this command
 CFLAGS="-O0 -ggdb3 -DUSE_THIRD_PARTY_HEAP -DUSE_TRANSIENT_HEAP=0" ./configure prefix="$PWD/build"
 # Note: this option is currently broken and allows unbounded heap sizes (bug in mmtk-core, #214)
-export THIRD_PARTY_HEAP_LIMIT=1000000
+export THIRD_PARTY_HEAP_LIMIT=4000000
 make install -j
+export PATH=$PWD/build/bin:$PATH
+
+# Time to test!
 echo "puts 'Hello, World'" > test.rb
-./build/bin/ruby test.rb
+ruby test.rb
 ```
 
 To test Ruby, it is recommended that you add the `ADDITIONAL_EXCLUDES` option to exclude tests which make assumptions based on Ruby's current GC implementation, or are extremely memory intensive.
