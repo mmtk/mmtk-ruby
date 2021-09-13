@@ -85,3 +85,8 @@ Known issues:
  - Use separate mutators for every thread for cache locality benefits (and correctness in case the GVL is ever removed)
  - Implement allocation fast paths
  - Fix tests
+
+
+## Licensing
+
+This work is dual-licensed under the MIT and Apache licenses, to be compatible with the MMTk-Core project. See the license notices in the root of this repository for further details.
