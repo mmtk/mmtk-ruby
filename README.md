@@ -32,9 +32,8 @@ export LD_LIBRARY_PATH=$PWD
 # -O0/-ggdb3 flags are used for debugging, remove for release
 # Note: you will need to have a BASERUBY installed to run this command
 CFLAGS="-O0 -ggdb3 -DUSE_THIRD_PARTY_HEAP -DUSE_TRANSIENT_HEAP=0" ./configure prefix="$PWD/build"
-# Note: this option is currently broken and allows unbounded heap sizes (bug in mmtk-core, #214)
-export THIRD_PARTY_HEAP_LIMIT=4000000
-make install -j
+# Note: 4MB may still be insufficient. Increase the heap size if needed.
+THIRD_PARTY_HEAP_LIMIT=4000000 make install -j
 export PATH=$PWD/build/bin:$PATH
 
 # Time to test!

@@ -2,6 +2,7 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use libc::c_char;
+use mmtk::util::constants::MIN_OBJECT_SIZE;
 use mmtk::util::{VMWorkerThread, VMMutatorThread, VMThread};
 use std::ffi::CStr;
 use mmtk::memory_manager;
@@ -40,7 +41,8 @@ pub extern "C" fn mmtk_destroy_mutator(mutator: *mut Mutator<Ruby>) {
 #[no_mangle]
 pub extern "C" fn mmtk_alloc(mutator: *mut Mutator<Ruby>, size: usize,
                     align: usize, offset: isize, semantics: AllocationSemantics) -> Address {
-    memory_manager::alloc::<Ruby>(unsafe { &mut *mutator }, size, align, offset, semantics)
+    let clamped_size = size.max(MIN_OBJECT_SIZE);
+    memory_manager::alloc::<Ruby>(unsafe { &mut *mutator }, clamped_size, align, offset, semantics)
 }
 
 #[no_mangle]
