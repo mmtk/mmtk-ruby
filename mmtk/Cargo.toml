@@ -20,8 +20,5 @@ libc = "0.2"
 lazy_static = "1.1"
 
 # Comment/uncomment for prod/local code respectively
-mmtk = { git = "ssh://git@github.com/mmtk/mmtk-core.git", rev = "72ccb2850e2d2572463abd7242daf53325f73d2e" }
-# mmtk = { path = "../repos/mmtk-core" }
-
-[features]
-nogc = ["mmtk/nogc"]
+# mmtk = { git = "ssh://git@github.com/mmtk/mmtk-core.git", rev = "72ccb2850e2d2572463abd7242daf53325f73d2e" }
+mmtk = { path = "../../control-group/mmtk-core" }

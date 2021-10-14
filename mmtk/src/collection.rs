@@ -1,31 +1,33 @@
+use mmtk::util::{VMMutatorThread,VMWorkerThread, VMThread};
 use mmtk::vm::Collection;
 use mmtk::MutatorContext;
-use mmtk::util::OpaquePointer;
-use mmtk::MMTK;
 use mmtk::scheduler::*;
-use mmtk::scheduler::gc_works::*;
 use crate::Ruby;
 
 pub struct VMCollection {}
 
 impl Collection<Ruby> for VMCollection {
-    fn stop_all_mutators<E: ProcessEdgesWork<VM=Ruby>>(_tls: OpaquePointer) {
+    fn stop_all_mutators<E: ProcessEdgesWork<VM=Ruby>>(_tls: VMWorkerThread) {
         unimplemented!()
     }
 
-    fn resume_mutators(_tls: OpaquePointer) {
+    fn resume_mutators(_tls: VMWorkerThread) {
         unimplemented!()
     }
 
-    fn block_for_gc(_tls: OpaquePointer) {
+    fn block_for_gc(_tls: VMMutatorThread) {
         unimplemented!();
     }
 
-    fn spawn_worker_thread(_tls: OpaquePointer, _ctx: Option<&Worker<MMTK<Ruby>>>) {
+    fn spawn_worker_thread(tls: VMThread, ctx: Option<&GCWorker<Ruby>>) {
         unimplemented!();
     }
 
-    fn prepare_mutator<T: MutatorContext<Ruby>>(_tls: OpaquePointer, _mutator: &T) {
+    fn prepare_mutator<T: MutatorContext<Ruby>>(
+        tls_worker: VMWorkerThread,
+        tls_mutator: VMMutatorThread,
+        m: &T,
+    ) {
         unimplemented!()
     }
 }

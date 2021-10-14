@@ -1,7 +1,7 @@
 use mmtk::vm::Scanning;
-use mmtk::{TransitiveClosure, SelectedPlan, Mutator};
-use mmtk::util::{ObjectReference, OpaquePointer, Address};
-use mmtk::scheduler::gc_works::*;
+use mmtk::{TransitiveClosure, Mutator};
+use mmtk::util::{Address, ObjectReference, VMWorkerThread};
+use mmtk::scheduler::{ProcessEdgesWork};
 use mmtk::scheduler::GCWorker;
 use std::os::raw::{c_void, c_ulong};
 use crate::Ruby;
@@ -46,7 +46,7 @@ impl Scanning<Ruby> for VMScanning {
         unimplemented!()
     }
 
-    fn scan_thread_root<W: ProcessEdgesWork<VM=Ruby>>(_mutator: &'static mut Mutator<SelectedPlan<Ruby>>, _tls: OpaquePointer) {
+    fn scan_thread_root<W: ProcessEdgesWork<VM=Ruby>>(_mutator: &'static mut Mutator<Ruby>, _tls: VMWorkerThread) {
         unimplemented!()
     }
 
@@ -54,7 +54,7 @@ impl Scanning<Ruby> for VMScanning {
         unimplemented!()
     }
 
-    fn scan_object<T: TransitiveClosure>(_trace: &mut T, _object: ObjectReference, _tls: OpaquePointer) {
+    fn scan_object<T: TransitiveClosure>(_trace: &mut T, _object: ObjectReference, _tls: VMWorkerThread) {
         unsafe {
             rb_mmtk_referent_objects(
 				_object.to_address().to_mut_ptr(),
@@ -64,7 +64,7 @@ impl Scanning<Ruby> for VMScanning {
         }
     }
 
-    fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: OpaquePointer) {
+    fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {
         unimplemented!()
     }
 

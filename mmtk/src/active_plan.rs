@@ -1,31 +1,27 @@
-use mmtk::{Plan, SelectedPlan};
+use mmtk::Mutator;
+use mmtk::Plan;
 use mmtk::vm::ActivePlan;
-use mmtk::util::OpaquePointer;
-use mmtk::scheduler::*;
+use mmtk::util::opaque_pointer::*;
 use crate::Ruby;
 use crate::SINGLETON;
 
 pub struct VMActivePlan<> {}
 
 impl ActivePlan<Ruby> for VMActivePlan {
-    fn global() -> &'static SelectedPlan<Ruby> {
-        &SINGLETON.plan
-    }
-
-    unsafe fn worker(_tls: OpaquePointer) -> &'static mut GCWorker<Ruby> {
-        unimplemented!()
+    fn global() -> &'static dyn Plan<VM = Ruby> {
+        SINGLETON.get_plan()
     }
 
     fn number_of_mutators() -> usize {
         unimplemented!()
     }
 
-    unsafe fn is_mutator(_tls: OpaquePointer) -> bool {
+    fn is_mutator(tls: VMThread) -> bool {
         // FIXME
         true
     }
 
-    unsafe fn mutator(_tls: OpaquePointer) -> &'static mut <SelectedPlan<Ruby> as Plan>::Mutator {
+    fn mutator(tls: VMMutatorThread) -> &'static mut Mutator<Ruby> {
         unimplemented!()
     }
 
@@ -33,7 +29,7 @@ impl ActivePlan<Ruby> for VMActivePlan {
         unimplemented!()
     }
 
-    fn get_next_mutator() -> Option<&'static mut <SelectedPlan<Ruby> as Plan>::Mutator> {
+    fn get_next_mutator() -> Option<&'static mut Mutator<Ruby>> {
         unimplemented!()
     }
 }

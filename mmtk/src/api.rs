@@ -2,11 +2,11 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use libc::c_char;
+use mmtk::util::{VMWorkerThread, VMMutatorThread, VMThread};
 use std::ffi::CStr;
 use mmtk::memory_manager;
 use mmtk::AllocationSemantics;
-use mmtk::util::{ObjectReference, OpaquePointer, Address};
-use mmtk::SelectedPlan;
+use mmtk::util::{ObjectReference, Address};
 use mmtk::scheduler::GCWorker;
 use mmtk::Mutator;
 use mmtk::MMTK;
@@ -23,28 +23,28 @@ pub extern "C" fn gc_init(heap_size: usize) {
 }
 
 #[no_mangle]
-pub extern "C" fn start_control_collector(tls: OpaquePointer) {
+pub extern "C" fn start_control_collector(tls: VMWorkerThread) {
     memory_manager::start_control_collector(&SINGLETON, tls);
 }
 
 #[no_mangle]
-pub extern "C" fn bind_mutator(tls: OpaquePointer) -> *mut Mutator<SelectedPlan<Ruby>> {
+pub extern "C" fn bind_mutator(tls: VMMutatorThread) -> *mut Mutator<Ruby> {
     Box::into_raw(memory_manager::bind_mutator(&SINGLETON, tls))
 }
 
 #[no_mangle]
-pub extern "C" fn destroy_mutator(mutator: *mut Mutator<SelectedPlan<Ruby>>) {
+pub extern "C" fn destroy_mutator(mutator: *mut Mutator<Ruby>) {
     memory_manager::destroy_mutator(unsafe { Box::from_raw(mutator) })
 }
 
 #[no_mangle]
-pub extern "C" fn alloc(mutator: *mut Mutator<SelectedPlan<Ruby>>, size: usize,
+pub extern "C" fn alloc(mutator: *mut Mutator<Ruby>, size: usize,
                     align: usize, offset: isize, semantics: AllocationSemantics) -> Address {
     memory_manager::alloc::<Ruby>(unsafe { &mut *mutator }, size, align, offset, semantics)
 }
 
 #[no_mangle]
-pub extern "C" fn post_alloc(mutator: *mut Mutator<SelectedPlan<Ruby>>, refer: ObjectReference,
+pub extern "C" fn post_alloc(mutator: *mut Mutator<Ruby>, refer: ObjectReference,
                                         bytes: usize, semantics: AllocationSemantics) {
     memory_manager::post_alloc::<Ruby>(unsafe { &mut *mutator }, refer, bytes, semantics)
 }
@@ -55,12 +55,12 @@ pub extern "C" fn will_never_move(object: ObjectReference) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn start_worker(tls: OpaquePointer, worker: &'static mut GCWorker<Ruby>, mmtk: &'static MMTK<Ruby>) {
+pub extern "C" fn start_worker(tls: VMWorkerThread, worker: &'static mut GCWorker<Ruby>, mmtk: &'static MMTK<Ruby>) {
     memory_manager::start_worker::<Ruby>(tls, worker, mmtk)
 }
 
 #[no_mangle]
-pub extern "C" fn enable_collection(tls: OpaquePointer) {
+pub extern "C" fn enable_collection(tls: VMThread) {
     memory_manager::enable_collection(&SINGLETON, tls)
 }
 
@@ -100,7 +100,7 @@ pub extern "C" fn modify_check(object: ObjectReference) {
 }
 
 #[no_mangle]
-pub extern "C" fn handle_user_collection_request(tls: OpaquePointer) {
+pub extern "C" fn handle_user_collection_request(tls: VMMutatorThread) {
     memory_manager::handle_user_collection_request::<Ruby>(&SINGLETON, tls);
 }
 
@@ -120,12 +120,12 @@ pub extern "C" fn add_phantom_candidate(reff: ObjectReference, referent: ObjectR
 }
 
 #[no_mangle]
-pub extern "C" fn harness_begin(tls: OpaquePointer) {
+pub extern "C" fn harness_begin(tls: VMMutatorThread) {
     memory_manager::harness_begin(&SINGLETON, tls)
 }
 
 #[no_mangle]
-pub extern "C" fn harness_end(_tls: OpaquePointer) {
+pub extern "C" fn harness_end(_tls: VMMutatorThread) {
     memory_manager::harness_end(&SINGLETON)
 }
 

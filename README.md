@@ -28,7 +28,7 @@ cp target/debug/libmmtk_ruby.* ../repos/ruby/
 # Build Ruby with MMTk enabled
 cd ../repos/ruby
 export LD_LIBRARY_PATH=$PWD
-autoconf
+./autogen.sh
 # -O0/-ggdb3 flags are used for debugging, remove for release
 # Note: you will need to have a BASERUBY installed to run this command
 CFLAGS="-O0 -ggdb3 -DUSE_THIRD_PARTY_HEAP -DUSE_TRANSIENT_HEAP=0" ./configure prefix="$PWD/build"
