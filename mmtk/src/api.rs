@@ -62,8 +62,13 @@ pub extern "C" fn mmtk_start_worker(tls: VMWorkerThread, worker: &'static mut GC
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_enable_collection(tls: VMThread) {
-    memory_manager::enable_collection(&SINGLETON, tls)
+pub extern "C" fn mmtk_initialize_collection(tls: VMThread) {
+    memory_manager::initialize_collection(&SINGLETON, tls)
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_enable_collection() {
+    memory_manager::enable_collection(&SINGLETON)
 }
 
 #[no_mangle]

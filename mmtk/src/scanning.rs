@@ -71,4 +71,8 @@ impl Scanning<Ruby> for VMScanning {
     fn supports_return_barrier() -> bool {
         false
     }
+
+    fn prepare_for_roots_re_scanning() {
+        todo!()
+    }
 }

@@ -109,4 +109,16 @@ impl ObjectModel<Ruby> for VMObjectModel {
     fn dump_object(object: ObjectReference) {
         todo!()
     }
+
+    fn get_size_when_copied(object: ObjectReference) -> usize {
+        todo!()
+    }
+
+    fn get_align_when_copied(object: ObjectReference) -> usize {
+        todo!()
+    }
+
+    fn get_align_offset_when_copied(object: ObjectReference) -> isize {
+        todo!()
+    }
 }
