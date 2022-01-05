@@ -2,44 +2,79 @@
 
 This repository hosts the binding code for MMTk Ruby. 
 
-In order for this binding to work, changes have been made to the Ruby core language to support generic third party heaps. Eventually, the aim is to upstream these changes. Until then, the modifications can be found [under my fork here](https://github.com/angussidney/ruby), on the branch `third-party-heap-2-7-2`. An overview of the changes can be viewed using [this diff](https://github.com/ruby/ruby/compare/ruby_2_7...angussidney:third-party-heap-2-7-2).
+In order for this binding to work, changes have been made to the Ruby core
+language to support generic third party heaps. Eventually, the aim is to
+upstream these changes. Until then, the modifications can be found [under my
+fork here](https://github.com/wks/ruby), on the branch `third-party-heap`.
+
+This repository is based on previous work of Angus Atkinson, and the original
+repository can be found [here](https://github.com/angussidney/mmtk-ruby.git),
+and the original Ruby fork can be found
+[here](https://github.com/angussidney/ruby.git).
 
 ## Installation/build instructions
 
-To build a copy of MMTk Ruby:
+You need to clone both the Ruby fork and the MMTk Ruby binding.  The location
+does not matter.
 
 ```bash
-# Clone sources
-git clone https://github.com/angussidney/mmtk-ruby.git
-cd mmtk-ruby
-git checkout 88dd50bc # Latest stable version of the binding
-mkdir repos && cd repos
-git clone https://github.com/angussidney/ruby.git
-cd ../mmtk
-
-# Build MMTk. Optionally edit Cargo.toml to use a local working copy
-# of mmtk-core rather than a fresh cloned copy
-export RUSTUP_TOOLCHAIN=nightly-2020-07-08
-# Add --release to include optimisations. Highly recommended when
-# not debugging (yields a huge performance increase)
-cargo build --features nogc
-cp target/debug/libmmtk_ruby.* ../repos/ruby/
-
-# Build Ruby with MMTk enabled
-cd ../repos/ruby
-export LD_LIBRARY_PATH=$PWD
-./autogen.sh
-# -O0/-ggdb3 flags are used for debugging, remove for release
-# Note: you will need to have a BASERUBY installed to run this command
-CFLAGS="-O0 -ggdb3 -DUSE_THIRD_PARTY_HEAP -DUSE_TRANSIENT_HEAP=0" ./configure prefix="$PWD/build"
-# Note: 4MB may still be insufficient. Increase the heap size if needed.
-THIRD_PARTY_HEAP_LIMIT=4000000 make install -j
-export PATH=$PWD/build/bin:$PATH
-
-# Time to test!
-echo "puts 'Hello, World'" > test.rb
-ruby test.rb
+git clone https://github.com/wks/ruby.git
+git clone https://github.com/wks/mmtk-ruby.git
 ```
+
+Build the MMTk binding, first.
+
+```bash
+pushd mmtk-ruby/mmtk
+cargo build
+popd
+```
+
+This will give you a `libmmtk_ruby.so` in the `target/debug` directory.
+
+By default, `mmtk-ruby` uses the `mmtk` crate from crates.io.  If you want to
+hack the MMTk core itself, you can edit `mmtk-ruby/mmtk/Cargo.toml` to point to
+your local repository.
+
+Then build our forked Ruby repository. First copy the built `libmmtk_ruby.so` to
+the `ruby` directory.
+
+```bash
+pushd ruby
+cp ../mmtk-ruby/mmtk/target/debug/libmmtk_ruby.so ./
+```
+
+Configure.
+
+```bash
+./autogen.sh
+./configure cppflags='-DUSE_THIRD_PARTY_HEAP -DUSE_TRANSIENT_HEAP=0' optflags='-O0' --prefix=$PWD/build --disable-install-doc
+```
+
+Build a `miniruby` executable.  We need to set some environment variables first.
+
+```bash
+export LD_LIBRARY_PATH=$PWD                 # for linking
+export MMTK_PLAN=NoGC                       # Now only NoGC is supported.
+export THIRD_PARTY_HEAP_LIMIT=1000000000    # We need a large heap because of NoGC
+
+make miniruby -j
+```
+
+The `miniruby` executable should be able to execute simple Ruby programs.  You
+can try the following command:
+
+```bash
+./miniruby -e 'puts "Hello world!"'
+```
+
+You can continue to build the full Ruby with
+
+```bash
+make install -j
+```
+
+## Test
 
 To test Ruby, it is recommended that you add the `ADDITIONAL_EXCLUDES` option to exclude tests which make assumptions based on Ruby's current GC implementation, or are extremely memory intensive.
 

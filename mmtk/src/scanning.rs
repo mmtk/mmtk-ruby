@@ -10,26 +10,6 @@ use crate::Ruby;
 #[allow(non_camel_case_types)]
 pub type size_t = c_ulong;
 
-extern "C" {
-    // Functions exposed by Ruby for introspection into the VM
-    pub fn rb_mmtk_referent_objects(
-        object: *mut c_void,
-        closure: *mut c_void,
-		callback: *mut c_void // This is a hack to pass the function pointer. Ideally, we would do something
-							  // like this, but it is not valid syntax. Additionally, we can't move the type
-							  // parameter to above, because C functions cannot have type parameters
-							  // unsafe extern "C" fn<T: TransitiveClosure>(closure: &mut T, adjacent: *mut *mut c_void)
-    );
-
-    pub fn rb_mmtk_roots(
-        callback: unsafe extern "C" fn(root: *mut *mut c_void),
-    );
-
-    pub fn rb_mmtk_stacks(
-        callback: unsafe extern "C" fn(stack: *mut c_void, size: size_t),
-    );
-}
-
 // Passed to C to perform the transitive closure
 pub unsafe extern "C" fn call_process_edge<T: TransitiveClosure>(closure: &mut T, adjacent: *mut *mut c_void) {
     closure.process_edge(Address::from_ptr(adjacent));
@@ -55,13 +35,7 @@ impl Scanning<Ruby> for VMScanning {
     }
 
     fn scan_object<T: TransitiveClosure>(_trace: &mut T, _object: ObjectReference, _tls: VMWorkerThread) {
-        unsafe {
-            rb_mmtk_referent_objects(
-				_object.to_address().to_mut_ptr(),
-				_trace as *mut T as *mut c_void,
-				call_process_edge::<T> as *mut c_void
-			);
-        }
+        unimplemented!()
     }
 
     fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {
