@@ -152,3 +152,15 @@ pub extern "C" fn mmtk_starting_heap_address() -> Address {
 pub extern "C" fn mmtk_last_heap_address() -> Address {
     memory_manager::last_heap_address()
 }
+
+#[no_mangle]
+pub extern "C" fn mmtk_register_finalizable(reff: ObjectReference) {
+    crate::BINDING.finalizer_processor.register_finalizable(reff);
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_poll_finalizable(include_live: bool) -> ObjectReference {
+    crate::BINDING.finalizer_processor.poll_finalizable(include_live).unwrap_or_else(|| {
+        unsafe { Address::zero().to_object_reference() }
+    })
+}

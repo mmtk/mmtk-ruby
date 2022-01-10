@@ -12,6 +12,8 @@ pub mod object_model;
 pub mod active_plan;
 pub mod reference_glue;
 pub mod api;
+pub mod finalize;
+pub mod vm;
 
 #[derive(Default)]
 pub struct Ruby;
@@ -26,4 +28,5 @@ impl VMBinding for Ruby {
 
 lazy_static! {
     pub static ref SINGLETON: MMTK<Ruby> = MMTK::new();
+    pub static ref BINDING: vm::BindingState = vm::BindingState::new();
 }
