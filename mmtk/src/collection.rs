@@ -20,7 +20,7 @@ impl Collection<Ruby> for VMCollection {
     }
 
     fn spawn_worker_thread(tls: VMThread, ctx: Option<&GCWorker<Ruby>>) {
-        unimplemented!();
+        // For NoGC, we do nothing.
     }
 
     fn prepare_mutator<T: MutatorContext<Ruby>>(
