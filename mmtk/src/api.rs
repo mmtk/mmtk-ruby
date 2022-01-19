@@ -13,14 +13,19 @@ use mmtk::Mutator;
 use mmtk::MMTK;
 use crate::Ruby;
 use crate::SINGLETON;
+use crate::abi;
 
 #[no_mangle]
-pub extern "C" fn mmtk_gc_init(heap_size: usize) {
+pub extern "C" fn mmtk_init_binding(heap_size: usize, upcalls: *const abi::RubyUpcalls) {
     // # Safety
     // Casting `SINGLETON` as mutable is safe because `gc_init` will only be executed once by a single thread during startup.
     #[allow(clippy::cast_ref_to_mut)]
     let singleton_mut = unsafe { &mut *(&*SINGLETON as *const MMTK<Ruby> as *mut MMTK<Ruby>) };
-    memory_manager::gc_init(singleton_mut, heap_size)
+    memory_manager::gc_init(singleton_mut, heap_size);
+
+    unsafe {
+        crate::UPCALLS = upcalls;
+    }
 }
 
 #[no_mangle]
@@ -155,12 +160,12 @@ pub extern "C" fn mmtk_last_heap_address() -> Address {
 
 #[no_mangle]
 pub extern "C" fn mmtk_register_finalizable(reff: ObjectReference) {
-    crate::BINDING.finalizer_processor.register_finalizable(reff);
+    crate::binding().finalizer_processor.register_finalizable(reff);
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_poll_finalizable(include_live: bool) -> ObjectReference {
-    crate::BINDING.finalizer_processor.poll_finalizable(include_live).unwrap_or_else(|| {
+    crate::binding().finalizer_processor.poll_finalizable(include_live).unwrap_or_else(|| {
         unsafe { Address::zero().to_object_reference() }
     })
 }

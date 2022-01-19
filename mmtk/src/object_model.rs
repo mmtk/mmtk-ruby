@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use mmtk::vm::*;
 use mmtk::util::{Address, ObjectReference};
 use mmtk::AllocationSemantics;
@@ -10,20 +12,32 @@ mod constants {
 
 }
 
+mod ruby_types {
+    /// Ruby's VALUE type.
+    pub type VALUE = libc::c_ulong;
+
+    #[repr(C)]
+    pub struct RMoved {
+        flags: VALUE,
+        dummy: VALUE,
+        destination: VALUE,
+    }
+}
+
 impl ObjectModel<Ruby> for VMObjectModel {
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
 
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec =
-            VMLocalForwardingPointerSpec::side_first();
+            VMLocalForwardingPointerSpec::in_header((size_of::<ruby_types::VALUE>() * 2 * 8) as isize);
 
     const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec =
-            VMLocalForwardingBitsSpec::side_after(Self::LOCAL_FORWARDING_POINTER_SPEC.as_spec());
+            VMLocalForwardingBitsSpec::side_first();
 
     const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec =
-            VMLocalMarkBitSpec::in_header(0);
+            VMLocalMarkBitSpec::side_after(Self::LOCAL_FORWARDING_BITS_SPEC.as_spec());
 
     const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec =
-            VMLocalLOSMarkNurserySpec::side_after(Self::LOCAL_FORWARDING_BITS_SPEC.as_spec());
+            VMLocalLOSMarkNurserySpec::side_after(Self::LOCAL_MARK_BIT_SPEC.as_spec());
 
     fn load_metadata(
         metadata_spec: &mmtk::util::metadata::header_metadata::HeaderMetadataSpec,

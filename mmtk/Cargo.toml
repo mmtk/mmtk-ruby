@@ -18,7 +18,9 @@ lto = true
 # Definitions for interoperating with C code on the ruby side
 libc = "0.2"
 lazy_static = "1.1"
+log = "0.4.14"
+env_logger = "0.9.0"
 
 # Comment/uncomment for prod/local code respectively
 mmtk.version = "0.9"
-# mmtk.path = "../repos/mmtk-core" # Uncomment this to use local repo
+#mmtk.path = "../../control-group/mmtk-core" # Uncomment this to use local repo
