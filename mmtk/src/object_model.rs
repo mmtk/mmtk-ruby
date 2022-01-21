@@ -1,9 +1,8 @@
 use std::mem::size_of;
 
+use mmtk::util::copy::{CopySemantics, GCWorkerCopyContext};
 use mmtk::vm::*;
 use mmtk::util::{Address, ObjectReference};
-use mmtk::AllocationSemantics;
-use mmtk::CopyContext;
 use crate::Ruby;
 
 pub struct VMObjectModel {}
@@ -90,8 +89,8 @@ impl ObjectModel<Ruby> for VMObjectModel {
 
     fn copy(
         from: ObjectReference,
-        semantics: AllocationSemantics,
-        copy_context: &mut impl CopyContext,
+        semantics: CopySemantics,
+        copy_context: &mut GCWorkerCopyContext<Ruby>,
     ) -> ObjectReference {
         todo!()
     }

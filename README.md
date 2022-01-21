@@ -32,7 +32,8 @@ popd
 
 This will give you a `libmmtk_ruby.so` in the `target/debug` directory.
 
-By default, `mmtk-ruby` uses the `mmtk` crate from crates.io.  If you want to
+By default, `mmtk-ruby` uses the `mmtk` crate from the `master` branch of
+[its official repository](https://github.com/mmtk/mmtk-core).  If you want to
 hack the MMTk core itself, you can edit `mmtk-ruby/mmtk/Cargo.toml` to point to
 your local repository.
 
@@ -48,7 +49,7 @@ Configure.
 
 ```bash
 ./autogen.sh
-./configure cppflags='-DUSE_THIRD_PARTY_HEAP -DUSE_TRANSIENT_HEAP=0' optflags='-O0' --prefix=$PWD/build --disable-install-doc
+./configure cppflags='-DUSE_THIRD_PARTY_HEAP -DUSE_TRANSIENT_HEAP=0 -DRUBY_DEBUG=1' optflags='-O0' --prefix=$PWD/build --disable-install-doc
 ```
 
 Build a `miniruby` executable.  We need to set some environment variables first.
