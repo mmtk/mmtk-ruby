@@ -20,7 +20,7 @@ impl Collection<Ruby> for VMCollection {
         (upcalls().block_for_gc)(tls);
     }
 
-    fn spawn_worker_thread(tls: VMThread, ctx: Option<&GCWorker<Ruby>>) {
+    fn spawn_worker_thread(tls: VMThread, ctx: Option<Box<GCWorker<Ruby>>>) {
         match ctx {
             None => {
                 thread::Builder::new().name("MMTk Controller Thread".to_string()).spawn(move || {
@@ -29,14 +29,11 @@ impl Collection<Ruby> for VMCollection {
                     memory_manager::start_control_collector(&SINGLETON, my_tls)
                 }).unwrap();
             }
-            Some(worker) => {
-                // BUG: https://github.com/mmtk/mmtk-core/issues/522
-                #[allow(mutable_transmutes)]
-                let worker_mut = unsafe { std::mem::transmute::<&GCWorker<Ruby>, &mut GCWorker<Ruby>>(worker) };
+            Some(mut worker) => {
                 thread::Builder::new().name("MMTk Worker Thread".to_string()).spawn(move || {
                     debug!("Hello! This is MMTk Worker Thread running!");
                     let my_tls = (upcalls().init_gc_worker_thread)(tls);
-                    memory_manager::start_worker(my_tls, worker_mut, &SINGLETON)
+                    memory_manager::start_worker(my_tls, &mut worker, &SINGLETON)
                 }).unwrap();            
             }
         }
