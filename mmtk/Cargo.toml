@@ -1,7 +1,10 @@
 [package]
 name = "mmtk_ruby"
 version = "0.1.0"
-authors = ["Angus Atkinson <4848802+angussidney@users.noreply.github.com>"]
+authors = [
+    "Kunshan Wang <wks1986@gmail.com>",
+    "Angus Atkinson <4848802+angussidney@users.noreply.github.com>",
+    ]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

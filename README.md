@@ -4,8 +4,8 @@ This repository hosts the binding code for MMTk Ruby.
 
 In order for this binding to work, changes have been made to the Ruby core
 language to support generic third party heaps. Eventually, the aim is to
-upstream these changes. Until then, the modifications can be found [under my
-fork here](https://github.com/wks/ruby), on the branch `third-party-heap`.
+upstream these changes. Until then, the modifications can be found [under our
+fork here](https://github.com/mmtk/ruby), on the branch `third-party-heap`.
 
 This repository is based on previous work of Angus Atkinson, and the original
 repository can be found [here](https://github.com/angussidney/mmtk-ruby.git),
@@ -18,8 +18,8 @@ You need to clone both the Ruby fork and the MMTk Ruby binding.  The location
 does not matter.
 
 ```bash
-git clone https://github.com/wks/ruby.git
-git clone https://github.com/wks/mmtk-ruby.git
+git clone https://github.com/mmtk/ruby.git
+git clone https://github.com/mmtk/mmtk-ruby.git
 ```
 
 Build the MMTk binding, first.
