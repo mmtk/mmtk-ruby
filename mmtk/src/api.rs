@@ -8,7 +8,7 @@ use std::ffi::CStr;
 use mmtk::memory_manager;
 use mmtk::AllocationSemantics;
 use mmtk::util::{ObjectReference, Address};
-use mmtk::scheduler::GCWorker;
+use mmtk::scheduler::{GCWorker, GCController};
 use mmtk::Mutator;
 use mmtk::MMTK;
 use crate::Ruby;
@@ -26,11 +26,6 @@ pub extern "C" fn mmtk_init_binding(heap_size: usize, upcalls: *const abi::RubyU
     unsafe {
         crate::UPCALLS = upcalls;
     }
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_start_control_collector(tls: VMWorkerThread) {
-    memory_manager::start_control_collector(&SINGLETON, tls);
 }
 
 #[no_mangle]
@@ -62,8 +57,15 @@ pub extern "C" fn mmtk_will_never_move(object: ObjectReference) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_start_worker(tls: VMWorkerThread, worker: &'static mut GCWorker<Ruby>, mmtk: &'static MMTK<Ruby>) {
-    memory_manager::start_worker::<Ruby>(tls, worker, mmtk)
+pub unsafe extern "C" fn mmtk_start_control_collector(tls: VMWorkerThread, controller: *mut GCController<Ruby>) {
+    let mut controller = Box::from_raw(controller);
+    memory_manager::start_control_collector(&SINGLETON, tls, &mut controller);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn mmtk_start_worker(tls: VMWorkerThread, worker: *mut GCWorker<Ruby>) {
+    let mut worker = Box::from_raw(worker);
+    memory_manager::start_worker::<Ruby>(&SINGLETON, tls, &mut worker)
 }
 
 #[no_mangle]

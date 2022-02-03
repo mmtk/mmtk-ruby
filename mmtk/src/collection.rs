@@ -1,5 +1,5 @@
 use mmtk::util::{VMMutatorThread,VMWorkerThread, VMThread};
-use mmtk::vm::Collection;
+use mmtk::vm::{Collection, GCThreadContext};
 use mmtk::{MutatorContext, memory_manager};
 use mmtk::scheduler::*;
 use crate::{Ruby, SINGLETON, upcalls};
@@ -20,20 +20,20 @@ impl Collection<Ruby> for VMCollection {
         (upcalls().block_for_gc)(tls);
     }
 
-    fn spawn_worker_thread(tls: VMThread, ctx: Option<Box<GCWorker<Ruby>>>) {
+    fn spawn_gc_thread(tls: VMThread, ctx: GCThreadContext<Ruby>) {
         match ctx {
-            None => {
+            GCThreadContext::Controller(mut controller) => {
                 thread::Builder::new().name("MMTk Controller Thread".to_string()).spawn(move || {
                     debug!("Hello! This is MMTk Controller Thread running!");
                     let my_tls = (upcalls().init_gc_worker_thread)(tls);
-                    memory_manager::start_control_collector(&SINGLETON, my_tls)
+                    memory_manager::start_control_collector(&SINGLETON, my_tls, &mut controller)
                 }).unwrap();
             }
-            Some(mut worker) => {
+            GCThreadContext::Worker(mut worker) => {
                 thread::Builder::new().name("MMTk Worker Thread".to_string()).spawn(move || {
                     debug!("Hello! This is MMTk Worker Thread running!");
                     let my_tls = (upcalls().init_gc_worker_thread)(tls);
-                    memory_manager::start_worker(my_tls, &mut worker, &SINGLETON)
+                    memory_manager::start_worker(&SINGLETON, my_tls, &mut worker)
                 }).unwrap();            
             }
         }
