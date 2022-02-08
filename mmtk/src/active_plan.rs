@@ -4,6 +4,7 @@ use mmtk::vm::ActivePlan;
 use mmtk::util::opaque_pointer::*;
 use crate::Ruby;
 use crate::SINGLETON;
+use crate::upcalls;
 
 pub struct VMActivePlan<> {}
 
@@ -26,10 +27,15 @@ impl ActivePlan<Ruby> for VMActivePlan {
     }
 
     fn reset_mutator_iterator() {
-        unimplemented!()
+        (upcalls().reset_mutator_iterator)();
     }
 
     fn get_next_mutator() -> Option<&'static mut Mutator<Ruby>> {
-        unimplemented!()
+        let ptr = (upcalls().get_next_mutator)();
+        if ptr == std::ptr::null_mut() {
+            None
+        } else {
+            Some(unsafe { &mut (*ptr) as &'static mut Mutator<Ruby> })
+        }
     }
 }
