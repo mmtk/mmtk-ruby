@@ -25,7 +25,7 @@ log = "0.4.14"
 env_logger = "0.9.0"
 
 # Uncomment this to use mmtk-core from the official repository.
-mmtk = { git = "https://github.com/mmtk/mmtk-core.git" }
+mmtk = { git = "https://github.com/wks/mmtk-core.git", branch = "is_arbitrary_address_alloced", features = ["is_mmtk_object"]}
 
 # Uncomment this to use mmtk-core from a local repository.
-# mmtk = { path = "/path/to/mmtk-core" }
+#mmtk = { path = "../../mmtk-core", features = ["is_mmtk_object"] }

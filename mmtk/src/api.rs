@@ -8,12 +8,13 @@ use std::ffi::CStr;
 use mmtk::memory_manager;
 use mmtk::AllocationSemantics;
 use mmtk::util::{ObjectReference, Address};
-use mmtk::scheduler::{GCWorker, GCController};
+use mmtk::scheduler::{GCWorker, GCController, WorkBucketStage};
 use mmtk::Mutator;
 use mmtk::MMTK;
 use crate::Ruby;
 use crate::SINGLETON;
-use crate::abi;
+use crate::abi::{self, GCThreadTLS};
+use crate::address_buffer::AddressBuffer;
 
 #[no_mangle]
 pub extern "C" fn mmtk_init_binding(heap_size: usize, upcalls: *const abi::RubyUpcalls) {
@@ -95,17 +96,17 @@ pub extern "C" fn mmtk_total_bytes() -> usize {
 
 #[no_mangle]
 pub extern "C" fn mmtk_is_live_object(object: ObjectReference) -> bool{
-    object.is_live()
+    memory_manager::is_live_object(object)
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_is_mapped_object(object: ObjectReference) -> bool {
-    object.is_mapped()
+pub extern "C" fn mmtk_is_mmtk_object(addr: Address) -> bool {
+    memory_manager::is_mmtk_object::<Ruby>(addr)
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_is_mapped_address(address: Address) -> bool {
-    address.is_mapped()
+pub extern "C" fn mmtk_is_mmtk_object_prechecked(addr: Address) -> bool {
+    memory_manager::is_mmtk_object_prechecked::<Ruby>(addr)
 }
 
 #[no_mangle]
@@ -170,4 +171,21 @@ pub extern "C" fn mmtk_poll_finalizable(include_live: bool) -> ObjectReference {
     crate::binding().finalizer_processor.poll_finalizable(include_live).unwrap_or_else(|| {
         unsafe { Address::zero().to_object_reference() }
     })
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_notify_mark_buffer_full(gc_thread_tls: *mut GCThreadTLS) {
+    let addr_vec = Vec::from(unsafe { (*gc_thread_tls).mark_buffer });
+    let new_buffer = AddressBuffer::create();
+    unsafe {
+        (*gc_thread_tls).mark_buffer = new_buffer;
+    }
+
+    // TODO: read the buffer.
+    debug!("The following items are in the mark buffer:");
+    for addr in addr_vec.iter() {
+        debug!("  {}", addr);
+    }
+
+    drop(addr_vec);
 }

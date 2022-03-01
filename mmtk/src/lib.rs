@@ -1,3 +1,5 @@
+#![feature(vec_into_raw_parts)]
+
 extern crate mmtk;
 extern crate libc;
 #[macro_use]
@@ -18,6 +20,7 @@ pub mod abi;
 pub mod api;
 pub mod finalize;
 pub mod binding;
+pub mod address_buffer;
 
 #[derive(Default)]
 pub struct Ruby;

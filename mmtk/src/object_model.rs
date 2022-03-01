@@ -26,6 +26,8 @@ mod ruby_types {
 impl ObjectModel<Ruby> for VMObjectModel {
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
 
+    const OBJREF_ALLOC_BIT_REM: usize = 0;
+
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec =
             VMLocalForwardingPointerSpec::in_header((size_of::<ruby_types::VALUE>() * 2 * 8) as isize);
 
@@ -112,7 +114,7 @@ impl ObjectModel<Ruby> for VMObjectModel {
     }
 
     fn object_start_ref(object: ObjectReference) -> Address {
-        todo!()
+        object.to_address()
     }
 
     fn ref_to_address(object: ObjectReference) -> Address {

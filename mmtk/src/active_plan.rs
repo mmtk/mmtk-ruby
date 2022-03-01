@@ -14,7 +14,7 @@ impl ActivePlan<Ruby> for VMActivePlan {
     }
 
     fn number_of_mutators() -> usize {
-        unimplemented!()
+        (upcalls().number_of_mutators)()
     }
 
     fn is_mutator(tls: VMThread) -> bool {
