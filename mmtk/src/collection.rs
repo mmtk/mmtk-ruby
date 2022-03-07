@@ -10,10 +10,6 @@ use std::thread;
 
 pub struct VMCollection {}
 
-fn to_vm_worker_thread(tls: *mut GCThreadTLS) -> VMWorkerThread {
-    VMWorkerThread(VMThread(OpaquePointer::from_address(Address::from_mut_ptr(tls))))
-}
-
 impl Collection<Ruby> for VMCollection {
     fn stop_all_mutators<E: ProcessEdgesWork<VM=Ruby>>(tls: VMWorkerThread) {
         (upcalls().stop_the_world)(tls);
@@ -33,27 +29,18 @@ impl Collection<Ruby> for VMCollection {
                 thread::Builder::new().name("MMTk Controller Thread".to_string()).spawn(move || {
                     debug!("Hello! This is MMTk Controller Thread running!");
                     let ptr_controller = &mut *controller as *mut GCController<Ruby>;
-                    let gc_thread_tls = Box::into_raw(Box::new(GCThreadTLS {
-                        kind: abi::GC_THREAD_KIND_CONTROLLER,
-                        gc_context: ptr_controller as *mut libc::c_void,
-                        mark_buffer: AddressBuffer::create(),
-                    }));
+                    let gc_thread_tls = Box::into_raw(Box::new(GCThreadTLS::for_controller(ptr_controller)));
                     (upcalls().init_gc_worker_thread)(gc_thread_tls);
-                    memory_manager::start_control_collector(&SINGLETON, to_vm_worker_thread(gc_thread_tls), &mut controller)
+                    memory_manager::start_control_collector(&SINGLETON, GCThreadTLS::to_vwt(gc_thread_tls), &mut controller)
                 }).unwrap();
             }
             GCThreadContext::Worker(mut worker) => {
                 thread::Builder::new().name("MMTk Worker Thread".to_string()).spawn(move || {
                     debug!("Hello! This is MMTk Worker Thread running!");
                     let ptr_worker = &mut *worker as *mut GCWorker<Ruby>;
-
-                    let gc_thread_tls = Box::into_raw(Box::new(GCThreadTLS {
-                        kind: abi::GC_THREAD_KIND_WORKER,
-                        gc_context: ptr_worker as *mut libc::c_void,
-                        mark_buffer: AddressBuffer::create(),
-                    }));
+                    let gc_thread_tls = Box::into_raw(Box::new(GCThreadTLS::for_worker(ptr_worker)));
                     (upcalls().init_gc_worker_thread)(gc_thread_tls);
-                    memory_manager::start_worker(&SINGLETON, to_vm_worker_thread(gc_thread_tls), &mut worker)
+                    memory_manager::start_worker(&SINGLETON, GCThreadTLS::to_vwt(gc_thread_tls), &mut worker)
                 }).unwrap();
             }
         }

@@ -49,7 +49,7 @@ Configure.
 
 ```bash
 ./autogen.sh
-./configure cppflags='-DUSE_THIRD_PARTY_HEAP -DUSE_TRANSIENT_HEAP=0 -DRUBY_DEBUG=1' optflags='-O0' --prefix=$PWD/build --disable-install-doc
+./configure --with-mmtk-ruby=../mmtk-ruby cppflags='-DRUBY_DEBUG=1' optflags='-O0' --prefix=$PWD/build --disable-install-doc
 ```
 
 Build a `miniruby` executable.  We need to set some environment variables first.

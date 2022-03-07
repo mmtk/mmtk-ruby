@@ -15,6 +15,7 @@ use crate::Ruby;
 use crate::SINGLETON;
 use crate::abi::{self, GCThreadTLS};
 use crate::address_buffer::AddressBuffer;
+use crate::scanning::VMScanning;
 
 #[no_mangle]
 pub extern "C" fn mmtk_init_binding(heap_size: usize, upcalls: *const abi::RubyUpcalls) {
@@ -174,18 +175,7 @@ pub extern "C" fn mmtk_poll_finalizable(include_live: bool) -> ObjectReference {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_notify_mark_buffer_full(gc_thread_tls: *mut GCThreadTLS) {
-    let addr_vec = Vec::from(unsafe { (*gc_thread_tls).mark_buffer });
-    let new_buffer = AddressBuffer::create();
-    unsafe {
-        (*gc_thread_tls).mark_buffer = new_buffer;
-    }
-
-    // TODO: read the buffer.
-    debug!("The following items are in the mark buffer:");
-    for addr in addr_vec.iter() {
-        debug!("  {}", addr);
-    }
-
-    drop(addr_vec);
+pub extern "C" fn mmtk_flush_mark_buffer(gc_thread_tls: *mut GCThreadTLS) {
+    let gc_thread_tls = GCThreadTLS::check_cast(gc_thread_tls);
+    gc_thread_tls.flush_buffer();
 }
