@@ -1,13 +1,13 @@
 use mmtk::scheduler::{GCController, GCWorker};
-use mmtk::util::{Address, VMMutatorThread, VMWorkerThread, VMThread, OpaquePointer};
+use mmtk::util::{Address, VMMutatorThread, VMWorkerThread, VMThread, OpaquePointer, ObjectReference};
 use mmtk::Mutator;
 use crate::{Ruby, upcalls};
-use crate::address_buffer::AddressBuffer;
+use crate::address_buffer::{AddressBuffer, FilledBuffer};
 
 pub const GC_THREAD_KIND_CONTROLLER: libc::c_int = 0;
 pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
-type BufferCallback = Box<dyn Fn(&mut GCWorker<Ruby>, Vec<Address>)>;
+pub type BufferCallback = Box<dyn FnMut(&'static mut GCWorker<Ruby>, FilledBuffer)>;
 
 #[repr(C)]
 pub struct GCThreadTLS {
@@ -15,7 +15,7 @@ pub struct GCThreadTLS {
     pub gc_context: *mut libc::c_void,
     pub mark_buffer: AddressBuffer,
     // The following are only accessible from Rust
-    pub buffer_callback: BufferCallback,
+    pub buffer_callback: Option<BufferCallback>
 }
 
 impl GCThreadTLS {
@@ -24,10 +24,7 @@ impl GCThreadTLS {
             kind,
             gc_context,
             mark_buffer: AddressBuffer::create(),
-            buffer_callback: Box::new(|_, _| {
-                panic!("buffer callback not set.  Current thread: {:?}",
-                    std::thread::current().name());
-            })
+            buffer_callback: None,
         }
     }
 
@@ -79,19 +76,41 @@ impl GCThreadTLS {
         unsafe { &mut *(self.gc_context as *mut GCWorker<Ruby>) }
     }
 
-    pub fn set_buffer_callback(&mut self, callback: BufferCallback) {
-        self.buffer_callback = callback;
+    /// Executes `f`. During the execution of `f`, if the Ruby VM delivers a mark buffer,
+    /// `callback` will be called with the filled buffer as the argument.
+    ///
+    /// Both `f` and `callback` may access and modify local variables in the environment where
+    /// `run_with_buffer_callback` called.
+    pub fn run_with_buffer_callback<'env, T, F1, F2>(&mut self, callback: F1, f: F2) -> T
+            where F1: 'env + FnMut(&'static mut GCWorker<Ruby>, FilledBuffer),
+                  F2: 'env + FnOnce(&mut Self) -> T {
+        let boxed_callback: Box<dyn 'env + FnMut(&'static mut GCWorker<Ruby>, FilledBuffer)> = Box::new(callback);
+        let boxed_callback: Box<dyn 'static + FnMut(&'static mut GCWorker<Ruby>, FilledBuffer)> =
+            unsafe { std::mem::transmute(boxed_callback) };
+
+        self.buffer_callback = Some(boxed_callback);
+        let result = f(self);
+        self.flush_buffer();
+        self.buffer_callback = None;
+
+        result
     }
 
     pub fn flush_buffer(&mut self) {
+        if self.mark_buffer.is_empty() {
+            return;
+        }
+
         let gc_worker = self.worker();
-        let callback = &mut self.buffer_callback;
-        let addr_vec = Vec::from(self.mark_buffer);
 
-        callback(gc_worker, addr_vec);
+        let maybe_callback = &mut self.buffer_callback;
+        let callback = maybe_callback.as_deref_mut().unwrap_or_else(|| {
+            panic!("buffer callback not set.  Current thread: {:?}",
+                std::thread::current().name());
+        });
 
-        let new_buffer = AddressBuffer::create();
-        self.mark_buffer = new_buffer;
+        let filled_buffer = self.mark_buffer.take_as_filled_buffer();
+        callback(gc_worker, filled_buffer);
     }
 }
 
@@ -109,6 +128,7 @@ pub struct RubyUpcalls {
     pub scan_vm_specific_roots: extern "C" fn (),
     pub scan_thread_roots: extern "C" fn (),
     pub scan_thread_root: extern "C" fn (mutator_tls: VMMutatorThread, worker_tls: VMWorkerThread),
+    pub scan_object_ruby_style: extern "C" fn (object: ObjectReference),
 }
 
 unsafe impl Sync for RubyUpcalls {}

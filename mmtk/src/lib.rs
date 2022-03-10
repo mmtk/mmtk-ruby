@@ -21,6 +21,7 @@ pub mod api;
 pub mod finalize;
 pub mod binding;
 pub mod address_buffer;
+pub mod gc_work;
 
 #[derive(Default)]
 pub struct Ruby;
