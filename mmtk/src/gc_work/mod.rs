@@ -27,17 +27,18 @@ impl<PE: ProcessEdgesWork<VM=Ruby>> ObjectsToObjectsWork<PE> {
 
 impl<PE: ProcessEdgesWork<VM=Ruby>> GCWork<Ruby> for ObjectsToObjectsWork<PE> {
     fn do_work(&mut self, worker: &mut GCWorker<Ruby>, _mmtk: &'static MMTK<Ruby>) {
-        debug!("ObjectsToObjectsWork Begin");
+        trace!("ObjectsToObjectsWork begins");
 
         self.process_edges.set_worker(worker);
 
-        debug!("[ObjectsToObjectsWork::do_work] Addresses:");
+        trace!("Begin: tracing objects");
         for obj in self.src_objs.iter() {
-            debug!("[ObjectsToObjectsWork::do_work] Trace object: {}", obj);
+            trace!("Trace object: {}", obj);
             assert!(!obj.is_null());
 
             self.process_edges.trace_object(*obj);
         }
+        trace!("End: tracing objects");
 
         // Unlike ProcessEdgesWork, we collect the list of objects and immediately scan all of them.
         let objects_to_scan = self.process_edges.nodes.drain(..).collect::<Vec<_>>();
@@ -47,19 +48,32 @@ impl<PE: ProcessEdgesWork<VM=Ruby>> GCWork<Ruby> for ObjectsToObjectsWork<PE> {
         let callback = |_, filled_buffer: FilledBuffer| {
             dest_objs.extend(filled_buffer.as_objref_vec().iter());
         };
+        trace!("Begin: run_with_buffer_callback");
         gc_thread_tls.run_with_buffer_callback(callback, |_| {
             for obj in objects_to_scan.iter() {
+                trace!("Scan object: {}", obj);
                 assert!(!obj.is_null());
                 (upcalls().scan_object_ruby_style)(*obj);
             }
         });
+        trace!("End: run_with_buffer_callback");
 
-        if dest_objs.is_empty() {
-            let next_packet = Self::new(dest_objs);
-            memory_manager::add_work_packet(&SINGLETON, mmtk::scheduler::WorkBucketStage::Closure, next_packet);
+        if log_enabled!(log::Level::Trace) {
+            trace!("Begin reference in the next packet");
+            for obj in dest_objs.iter() {
+                trace!("  reference: {}", obj);
+            }
+            trace!("End reference in the next packet");
         }
 
-        // TODO: scan the objects in the buffer.
-        debug!("ObjectsToObjectsWork End");
+        if !dest_objs.is_empty() {
+            // Just use ProcessEdgesWork::CAPACITY as a heurestic for slicing packets up.
+            for segment in dest_objs.chunks(PE::CAPACITY) {
+                let next_packet = Self::new(segment.to_vec());
+                memory_manager::add_work_packet(&SINGLETON, mmtk::scheduler::WorkBucketStage::Closure, next_packet);
+            }
+        }
+
+        trace!("ObjectsToObjectsWork ends");
     }
 }

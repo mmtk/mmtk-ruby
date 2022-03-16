@@ -55,6 +55,16 @@ impl Scanning<Ruby> for VMScanning {
         gc_tls.run_with_buffer_callback(callback, |gc_tls| {
             (upcalls().scan_vm_specific_roots)();
         });
+        {
+            // FIXME: This is a workaround.  Obviously it will keep all finalizable objects alive until program exits.
+            debug!("[scan_vm_specific_roots] Enqueueing candidates.");
+            let candidates = crate::binding().finalizer_processor.with_candidates(|v| {
+                v.iter().cloned().collect::<Vec<_>>()
+            });
+            let bucket = WorkBucketStage::Closure;
+            let packet = ObjectsToObjectsWork::<W>::new(candidates);
+            memory_manager::add_work_packet(&SINGLETON, bucket, packet);
+        }
     }
 
     fn scan_object<T: TransitiveClosure>(_trace: &mut T, _object: ObjectReference, _tls: VMWorkerThread) {

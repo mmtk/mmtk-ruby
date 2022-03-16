@@ -15,6 +15,12 @@ impl FinalizerProcessor {
         }
     }
 
+    pub(crate) fn with_candidates<T, F>(&self, callback: F) -> T
+        where F: FnOnce(&Vec<ObjectReference>) -> T {
+        let guard = self.candidates.lock().unwrap();
+        callback(&*guard)
+    }
+
     pub fn register_finalizable(&self, reff: ObjectReference) {
         self.candidates.lock().unwrap().push(reff);
     }

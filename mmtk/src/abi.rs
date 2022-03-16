@@ -81,10 +81,20 @@ impl GCThreadTLS {
     ///
     /// Both `f` and `callback` may access and modify local variables in the environment where
     /// `run_with_buffer_callback` called.
+    ///
+    /// Note that this function is not reentrant.  Don't call this function in either `callback` or
+    /// `f`.
     pub fn run_with_buffer_callback<'env, T, F1, F2>(&mut self, callback: F1, f: F2) -> T
             where F1: 'env + FnMut(&'static mut GCWorker<Ruby>, FilledBuffer),
                   F2: 'env + FnOnce(&mut Self) -> T {
         let boxed_callback: Box<dyn 'env + FnMut(&'static mut GCWorker<Ruby>, FilledBuffer)> = Box::new(callback);
+        // Unsafe: This `transmute` casts away the lifetime `'env`. By doing this, the callback
+        // closure can be stored into `self`, a thread-local data structure, so that C code in the
+        // VM can call it back.  This is unsafe, because once the `callback` is stored in a
+        // thread-local data structure, the callback may outlive the variables it captured by
+        // reference.  However, the `self.bufer_callback = None;` line below destroys the callback
+        // so that we can guarantee it will not be called after `run_with_buffer_callback` returns.
+        // So this function is safe as a whole.
         let boxed_callback: Box<dyn 'static + FnMut(&'static mut GCWorker<Ruby>, FilledBuffer)> =
             unsafe { std::mem::transmute(boxed_callback) };
 
