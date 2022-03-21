@@ -1,8 +1,8 @@
-use mmtk::scheduler::{GCController, GCWorker};
-use mmtk::util::{Address, VMMutatorThread, VMWorkerThread, VMThread, OpaquePointer, ObjectReference};
-use mmtk::Mutator;
-use crate::{Ruby, upcalls};
 use crate::address_buffer::{AddressBuffer, FilledBuffer};
+use crate::{upcalls, Ruby};
+use mmtk::scheduler::{GCController, GCWorker};
+use mmtk::util::{ObjectReference, VMMutatorThread, VMWorkerThread};
+use mmtk::Mutator;
 
 pub const GC_THREAD_KIND_CONTROLLER: libc::c_int = 0;
 pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
@@ -15,7 +15,7 @@ pub struct GCThreadTLS {
     pub gc_context: *mut libc::c_void,
     pub mark_buffer: AddressBuffer,
     // The following are only accessible from Rust
-    pub buffer_callback: Option<BufferCallback>
+    pub buffer_callback: Option<BufferCallback>,
 }
 
 impl GCThreadTLS {
@@ -37,16 +37,12 @@ impl GCThreadTLS {
     }
 
     pub fn from_vwt(vwt: VMWorkerThread) -> *mut GCThreadTLS {
-        unsafe {
-            std::mem::transmute(vwt)
-        }
+        unsafe { std::mem::transmute(vwt) }
     }
 
     pub fn check_cast(ptr: *mut GCThreadTLS) -> &'static mut GCThreadTLS {
         assert!(ptr != std::ptr::null_mut());
-        let result = unsafe {
-            &mut *ptr
-        };
+        let result = unsafe { &mut *ptr };
         debug_assert!({
             let kind = result.kind;
             kind == GC_THREAD_KIND_CONTROLLER || kind == GC_THREAD_KIND_WORKER
@@ -60,9 +56,7 @@ impl GCThreadTLS {
     }
 
     pub fn to_vwt(ptr: *mut Self) -> VMWorkerThread {
-        unsafe {
-            std::mem::transmute(ptr)
-        }
+        unsafe { std::mem::transmute(ptr) }
     }
 
     pub fn from_upcall_check() -> &'static mut GCThreadTLS {
@@ -85,9 +79,12 @@ impl GCThreadTLS {
     /// Note that this function is not reentrant.  Don't call this function in either `callback` or
     /// `f`.
     pub fn run_with_buffer_callback<'env, T, F1, F2>(&mut self, callback: F1, f: F2) -> T
-            where F1: 'env + FnMut(&'static mut GCWorker<Ruby>, FilledBuffer),
-                  F2: 'env + FnOnce(&mut Self) -> T {
-        let boxed_callback: Box<dyn 'env + FnMut(&'static mut GCWorker<Ruby>, FilledBuffer)> = Box::new(callback);
+    where
+        F1: 'env + FnMut(&'static mut GCWorker<Ruby>, FilledBuffer),
+        F2: 'env + FnOnce(&mut Self) -> T,
+    {
+        let boxed_callback: Box<dyn 'env + FnMut(&'static mut GCWorker<Ruby>, FilledBuffer)> =
+            Box::new(callback);
         // Unsafe: This `transmute` casts away the lifetime `'env`. By doing this, the callback
         // closure can be stored into `self`, a thread-local data structure, so that C code in the
         // VM can call it back.  This is unsafe, because once the `callback` is stored in a
@@ -115,8 +112,10 @@ impl GCThreadTLS {
 
         let maybe_callback = &mut self.buffer_callback;
         let callback = maybe_callback.as_deref_mut().unwrap_or_else(|| {
-            panic!("buffer callback not set.  Current thread: {:?}",
-                std::thread::current().name());
+            panic!(
+                "buffer callback not set.  Current thread: {:?}",
+                std::thread::current().name()
+            );
         });
 
         let filled_buffer = self.mark_buffer.take_as_filled_buffer();
@@ -127,18 +126,18 @@ impl GCThreadTLS {
 #[repr(C)]
 #[derive(Clone)]
 pub struct RubyUpcalls {
-    pub init_gc_worker_thread: extern "C" fn (gc_worker_tls: *mut GCThreadTLS),
-    pub get_gc_thread_tls: extern "C" fn () -> *mut GCThreadTLS,
-    pub stop_the_world: extern "C" fn (tls: VMWorkerThread),
-    pub resume_mutators: extern "C" fn (tls: VMWorkerThread),
-    pub block_for_gc: extern "C" fn (tls: VMMutatorThread),
-    pub number_of_mutators: extern "C" fn () -> usize,
-    pub reset_mutator_iterator: extern "C" fn (),
-    pub get_next_mutator: extern "C" fn () -> *mut Mutator<Ruby>,
-    pub scan_vm_specific_roots: extern "C" fn (),
-    pub scan_thread_roots: extern "C" fn (),
-    pub scan_thread_root: extern "C" fn (mutator_tls: VMMutatorThread, worker_tls: VMWorkerThread),
-    pub scan_object_ruby_style: extern "C" fn (object: ObjectReference),
+    pub init_gc_worker_thread: extern "C" fn(gc_worker_tls: *mut GCThreadTLS),
+    pub get_gc_thread_tls: extern "C" fn() -> *mut GCThreadTLS,
+    pub stop_the_world: extern "C" fn(tls: VMWorkerThread),
+    pub resume_mutators: extern "C" fn(tls: VMWorkerThread),
+    pub block_for_gc: extern "C" fn(tls: VMMutatorThread),
+    pub number_of_mutators: extern "C" fn() -> usize,
+    pub reset_mutator_iterator: extern "C" fn(),
+    pub get_next_mutator: extern "C" fn() -> *mut Mutator<Ruby>,
+    pub scan_vm_specific_roots: extern "C" fn(),
+    pub scan_thread_roots: extern "C" fn(),
+    pub scan_thread_root: extern "C" fn(mutator_tls: VMMutatorThread, worker_tls: VMWorkerThread),
+    pub scan_object_ruby_style: extern "C" fn(object: ObjectReference),
 }
 
 unsafe impl Sync for RubyUpcalls {}

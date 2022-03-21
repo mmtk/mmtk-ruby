@@ -1,14 +1,18 @@
-use mmtk::{util::{Address, ObjectReference}, scheduler::{GCWork, GCWorker, ProcessEdgesWork}, MMTK, memory_manager};
+use mmtk::{
+    memory_manager,
+    scheduler::{GCWork, GCWorker, ProcessEdgesWork},
+    util::{Address, ObjectReference},
+    MMTK,
+};
 
-use crate::{Ruby, SINGLETON, upcalls, abi::GCThreadTLS, address_buffer::FilledBuffer};
-use crate::abi::BufferCallback;
+use crate::{abi::GCThreadTLS, address_buffer::FilledBuffer, upcalls, Ruby, SINGLETON};
 
 pub struct ObjectsToObjectsWork<PE: ProcessEdgesWork> {
     process_edges: PE,
     src_objs: Vec<ObjectReference>,
 }
 
-impl<PE: ProcessEdgesWork<VM=Ruby>> ObjectsToObjectsWork<PE> {
+impl<PE: ProcessEdgesWork<VM = Ruby>> ObjectsToObjectsWork<PE> {
     pub fn from_addr_vec(addrs: Vec<Address>) -> Self {
         let src_objs = addrs
             .into_iter()
@@ -25,7 +29,7 @@ impl<PE: ProcessEdgesWork<VM=Ruby>> ObjectsToObjectsWork<PE> {
     }
 }
 
-impl<PE: ProcessEdgesWork<VM=Ruby>> GCWork<Ruby> for ObjectsToObjectsWork<PE> {
+impl<PE: ProcessEdgesWork<VM = Ruby>> GCWork<Ruby> for ObjectsToObjectsWork<PE> {
     fn do_work(&mut self, worker: &mut GCWorker<Ruby>, _mmtk: &'static MMTK<Ruby>) {
         trace!("ObjectsToObjectsWork begins");
 
@@ -70,7 +74,11 @@ impl<PE: ProcessEdgesWork<VM=Ruby>> GCWork<Ruby> for ObjectsToObjectsWork<PE> {
             // Just use ProcessEdgesWork::CAPACITY as a heurestic for slicing packets up.
             for segment in dest_objs.chunks(PE::CAPACITY) {
                 let next_packet = Self::new(segment.to_vec());
-                memory_manager::add_work_packet(&SINGLETON, mmtk::scheduler::WorkBucketStage::Closure, next_packet);
+                memory_manager::add_work_packet(
+                    &SINGLETON,
+                    mmtk::scheduler::WorkBucketStage::Closure,
+                    next_packet,
+                );
             }
         }
 

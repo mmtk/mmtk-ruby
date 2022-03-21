@@ -1,21 +1,20 @@
 // All functions here are extern function. There is no point for marking them as unsafe.
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
-use libc::c_char;
-use mmtk::util::constants::MIN_OBJECT_SIZE;
-use mmtk::util::{VMWorkerThread, VMMutatorThread, VMThread};
-use std::ffi::CStr;
-use mmtk::memory_manager;
-use mmtk::AllocationSemantics;
-use mmtk::util::{ObjectReference, Address};
-use mmtk::scheduler::{GCWorker, GCController, WorkBucketStage};
-use mmtk::Mutator;
-use mmtk::MMTK;
+use crate::abi::{self, GCThreadTLS};
+
 use crate::Ruby;
 use crate::SINGLETON;
-use crate::abi::{self, GCThreadTLS};
-use crate::address_buffer::AddressBuffer;
-use crate::scanning::VMScanning;
+use libc::c_char;
+use mmtk::memory_manager;
+use mmtk::scheduler::{GCController, GCWorker};
+use mmtk::util::constants::MIN_OBJECT_SIZE;
+use mmtk::util::{Address, ObjectReference};
+use mmtk::util::{VMMutatorThread, VMThread, VMWorkerThread};
+use mmtk::AllocationSemantics;
+use mmtk::Mutator;
+use mmtk::MMTK;
+use std::ffi::CStr;
 
 #[no_mangle]
 pub extern "C" fn mmtk_init_binding(heap_size: usize, upcalls: *const abi::RubyUpcalls) {
@@ -41,15 +40,30 @@ pub extern "C" fn mmtk_destroy_mutator(mutator: *mut Mutator<Ruby>) {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_alloc(mutator: *mut Mutator<Ruby>, size: usize,
-                    align: usize, offset: isize, semantics: AllocationSemantics) -> Address {
+pub extern "C" fn mmtk_alloc(
+    mutator: *mut Mutator<Ruby>,
+    size: usize,
+    align: usize,
+    offset: isize,
+    semantics: AllocationSemantics,
+) -> Address {
     let clamped_size = size.max(MIN_OBJECT_SIZE);
-    memory_manager::alloc::<Ruby>(unsafe { &mut *mutator }, clamped_size, align, offset, semantics)
+    memory_manager::alloc::<Ruby>(
+        unsafe { &mut *mutator },
+        clamped_size,
+        align,
+        offset,
+        semantics,
+    )
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_post_alloc(mutator: *mut Mutator<Ruby>, refer: ObjectReference,
-                                        bytes: usize, semantics: AllocationSemantics) {
+pub extern "C" fn mmtk_post_alloc(
+    mutator: *mut Mutator<Ruby>,
+    refer: ObjectReference,
+    bytes: usize,
+    semantics: AllocationSemantics,
+) {
     memory_manager::post_alloc::<Ruby>(unsafe { &mut *mutator }, refer, bytes, semantics)
 }
 
@@ -59,7 +73,10 @@ pub extern "C" fn mmtk_will_never_move(object: ObjectReference) -> bool {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn mmtk_start_control_collector(tls: VMWorkerThread, controller: *mut GCController<Ruby>) {
+pub unsafe extern "C" fn mmtk_start_control_collector(
+    tls: VMWorkerThread,
+    controller: *mut GCController<Ruby>,
+) {
     let mut controller = Box::from_raw(controller);
     memory_manager::start_control_collector(&SINGLETON, tls, &mut controller);
 }
@@ -96,7 +113,7 @@ pub extern "C" fn mmtk_total_bytes() -> usize {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_is_live_object(object: ObjectReference) -> bool{
+pub extern "C" fn mmtk_is_live_object(object: ObjectReference) -> bool {
     memory_manager::is_live_object(object)
 }
 
@@ -146,7 +163,11 @@ pub extern "C" fn mmtk_harness_end(_tls: VMMutatorThread) {
 pub extern "C" fn mmtk_process(name: *const c_char, value: *const c_char) -> bool {
     let name_str: &CStr = unsafe { CStr::from_ptr(name) };
     let value_str: &CStr = unsafe { CStr::from_ptr(value) };
-    memory_manager::process(&SINGLETON, name_str.to_str().unwrap(), value_str.to_str().unwrap())
+    memory_manager::process(
+        &SINGLETON,
+        name_str.to_str().unwrap(),
+        value_str.to_str().unwrap(),
+    )
 }
 
 #[no_mangle]
@@ -161,14 +182,17 @@ pub extern "C" fn mmtk_last_heap_address() -> Address {
 
 #[no_mangle]
 pub extern "C" fn mmtk_register_finalizable(reff: ObjectReference) {
-    crate::binding().finalizer_processor.register_finalizable(reff);
+    crate::binding()
+        .finalizer_processor
+        .register_finalizable(reff);
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_poll_finalizable(include_live: bool) -> ObjectReference {
-    crate::binding().finalizer_processor.poll_finalizable(include_live).unwrap_or_else(|| {
-        unsafe { Address::zero().to_object_reference() }
-    })
+    crate::binding()
+        .finalizer_processor
+        .poll_finalizable(include_live)
+        .unwrap_or_else(|| unsafe { Address::zero().to_object_reference() })
 }
 
 #[no_mangle]

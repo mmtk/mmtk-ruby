@@ -1,12 +1,12 @@
-use mmtk::Mutator;
-use mmtk::Plan;
-use mmtk::vm::ActivePlan;
-use mmtk::util::opaque_pointer::*;
+use crate::upcalls;
 use crate::Ruby;
 use crate::SINGLETON;
-use crate::upcalls;
+use mmtk::util::opaque_pointer::*;
+use mmtk::vm::ActivePlan;
+use mmtk::Mutator;
+use mmtk::Plan;
 
-pub struct VMActivePlan<> {}
+pub struct VMActivePlan {}
 
 impl ActivePlan<Ruby> for VMActivePlan {
     fn global() -> &'static dyn Plan<VM = Ruby> {
@@ -17,12 +17,12 @@ impl ActivePlan<Ruby> for VMActivePlan {
         (upcalls().number_of_mutators)()
     }
 
-    fn is_mutator(tls: VMThread) -> bool {
+    fn is_mutator(_tls: VMThread) -> bool {
         // FIXME
         true
     }
 
-    fn mutator(tls: VMMutatorThread) -> &'static mut Mutator<Ruby> {
+    fn mutator(_tls: VMMutatorThread) -> &'static mut Mutator<Ruby> {
         unimplemented!()
     }
 

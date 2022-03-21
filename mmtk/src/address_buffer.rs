@@ -21,8 +21,12 @@ impl AddressBuffer {
 
     pub fn create() -> Self {
         let vector = Vec::with_capacity(Self::DEFAULT_CAPACITY);
-        let (ptr, length, capacity ) = vector.into_raw_parts();
-        AddressBuffer { ptr, length, capacity }
+        let (ptr, length, capacity) = vector.into_raw_parts();
+        AddressBuffer {
+            ptr,
+            length,
+            capacity,
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -41,6 +45,12 @@ impl FilledBuffer {
     }
 
     pub fn as_objref_vec(self) -> Vec<ObjectReference> {
-        unsafe { Vec::from_raw_parts(self.buffer.ptr as *mut ObjectReference, self.buffer.length, self.buffer.capacity) }
+        unsafe {
+            Vec::from_raw_parts(
+                self.buffer.ptr as *mut ObjectReference,
+                self.buffer.length,
+                self.buffer.capacity,
+            )
+        }
     }
 }

@@ -16,7 +16,9 @@ impl FinalizerProcessor {
     }
 
     pub(crate) fn with_candidates<T, F>(&self, callback: F) -> T
-        where F: FnOnce(&Vec<ObjectReference>) -> T {
+    where
+        F: FnOnce(&Vec<ObjectReference>) -> T,
+    {
         let guard = self.candidates.lock().unwrap();
         callback(&*guard)
     }
