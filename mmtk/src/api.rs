@@ -102,12 +102,9 @@ pub extern "C" fn mmtk_is_live_object(object: ObjectReference) -> bool{
 
 #[no_mangle]
 pub extern "C" fn mmtk_is_mmtk_object(addr: Address) -> bool {
-    memory_manager::is_mmtk_object::<Ruby>(addr)
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_is_mmtk_object_prechecked(addr: Address) -> bool {
-    memory_manager::is_mmtk_object_prechecked::<Ruby>(addr)
+    debug_assert!(!addr.is_zero());
+    debug_assert!(addr.is_aligned_to(mmtk::util::is_mmtk_object::ALLOC_BIT_REGION_SIZE));
+    memory_manager::is_mmtk_object(addr)
 }
 
 #[no_mangle]
