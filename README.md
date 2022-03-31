@@ -26,9 +26,12 @@ Build the MMTk binding, first.
 
 ```bash
 pushd mmtk-ruby/mmtk
-cargo build
+cargo +nightly build
 popd
 ```
+
+*Note: mmtk-core uses the "stable" toolchain by default, but currently
+mmtk-ruby depends on a feature only available in "nightly" Rust.*
 
 This will give you a `libmmtk_ruby.so` in the `target/debug` directory.
 
