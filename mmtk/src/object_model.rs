@@ -19,6 +19,10 @@ mod ruby_types {
     }
 }
 
+impl VMObjectModel {
+    const OBJREF_OFFSET: usize = 8;
+}
+
 impl ObjectModel<Ruby> for VMObjectModel {
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
 
@@ -108,7 +112,7 @@ impl ObjectModel<Ruby> for VMObjectModel {
     }
 
     fn object_start_ref(object: ObjectReference) -> Address {
-        object.to_address()
+        object.to_address() - Self::OBJREF_OFFSET
     }
 
     fn ref_to_address(_object: ObjectReference) -> Address {
