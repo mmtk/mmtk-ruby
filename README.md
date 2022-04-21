@@ -12,7 +12,9 @@ repository can be found [here](https://github.com/angussidney/mmtk-ruby.git),
 and the original Ruby fork can be found
 [here](https://github.com/angussidney/ruby.git).
 
-## Installation/build instructions
+## Building/installation instructions
+
+### Checkout repositories
 
 You need to clone both the Ruby fork and the MMTk Ruby binding.  The location
 does not matter.
@@ -22,45 +24,40 @@ git clone https://github.com/mmtk/ruby.git
 git clone https://github.com/mmtk/mmtk-ruby.git
 ```
 
-Build the MMTk binding, first.
+### Build the MMTk binding, first.
 
 ```bash
 pushd mmtk-ruby/mmtk
-cargo +nightly build
+cargo +nightly build --release
 popd
 ```
 
 *Note: mmtk-core uses the "stable" toolchain by default, but currently
 mmtk-ruby depends on a feature only available in "nightly" Rust.*
 
-This will give you a `libmmtk_ruby.so` in the `target/debug` directory.
+This will give you a `libmmtk_ruby.so` in the `target/release` directory.
 
-By default, `mmtk-ruby` uses the `mmtk` crate from the `master` branch of
-[its official repository](https://github.com/mmtk/mmtk-core).  If you want to
-hack the MMTk core itself, you can edit `mmtk-ruby/mmtk/Cargo.toml` to point to
-your local repository.
+By default, `mmtk-ruby` uses the `mmtk` crate from the `master` branch of [its
+official repository](https://github.com/mmtk/mmtk-core).  If you want to hack
+the MMTk core itself, you can edit `mmtk-ruby/mmtk/Cargo.toml` to point to your
+local repository.
 
-Then build our forked Ruby repository. First copy the built `libmmtk_ruby.so` to
-the `ruby` directory.
-
-```bash
-pushd ruby
-cp ../mmtk-ruby/mmtk/target/debug/libmmtk_ruby.so ./
-```
+### Then build our forked Ruby repository.
 
 Configure.
 
 ```bash
+cd ruby
 ./autogen.sh
-./configure --with-mmtk-ruby=../mmtk-ruby cppflags='-DRUBY_DEBUG=1' optflags='-O0' --prefix=$PWD/build --disable-install-doc
+./configure --with-mmtk-ruby=../mmtk-ruby --prefix=$PWD/build
 ```
 
-Build a `miniruby` executable.  We need to set some environment variables first.
+Build a `miniruby` executable.  We need to set some environment variables
+first.
 
 ```bash
-export LD_LIBRARY_PATH=$PWD                 # for linking
-export MMTK_PLAN=NoGC                       # Now only NoGC is supported.
-export THIRD_PARTY_HEAP_LIMIT=1000000000    # We need a large heap because of NoGC
+export MMTK_PLAN=MarkSweep                  # Set the GC algorithm to MarkSweep
+export THIRD_PARTY_HEAP_LIMIT=500000000     # 500M should be enough. If still out of memory, add more.
 
 make miniruby -j
 ```
@@ -72,11 +69,48 @@ can try the following command:
 ./miniruby -e 'puts "Hello world!"'
 ```
 
-You can continue to build the full Ruby with
+You can continue to build the full Ruby and install it with
 
 ```bash
 make install -j
 ```
+
+### Debug build
+
+You can build with debug options enabled for easy debugging.
+
+Remove the `--release` option to build `mmtk-ruby` for debug.  Note that the
+Cargo build system is smart enough to let the result of debug build and release
+build to coexist in the `target/debug` and `target/release` directories.
+
+```bash
+pushd mmtk-ruby/mmtk
+cargo +nightly build
+popd
+```
+
+By default, `./configure` searches for `libmmtk_ruby.so` in
+`mmtk-ruby/mmtk/target/debug`, and the linker will subsequently link `miniruby`
+and `ruby` to that `.so`. Add `--with-mmtk-ruby-debug` so it will search for
+`libmmtk_ruby.so` in `mmtk-ruby/mmtk/target/debug`, instead.
+
+Set the compiler option `-DRUBY_DEBUG=1` to enable most assertions in Ruby.
+
+Add the `-O0` optimization flag so the debug can see the values of most local
+variables.  But if it is too slow, try `-O1` instead.
+
+The `--disable-install-doc` will disable the generation of documentations.  It
+can make the build process much faster.
+
+The following is an example of configuring for debugging.
+
+```bash
+./configure --with-mmtk-ruby=../mmtk-ruby --with-mmtk-ruby-debug cppflags='-DRUBY_DEBUG=1' optflags='-O0' --prefix=$PWD/build --disable-install-doc
+```
+
+Also note that you can use the release build of `mmtk-ruby` with a debug build
+of `ruby` (with `optflags='-O0'` but without `--with-mmtk-ruby-debug`) and vice
+versa (with `--with-mmtk-ruby-debug` and `optflags='-O1'` or higher).
 
 ## Test
 
