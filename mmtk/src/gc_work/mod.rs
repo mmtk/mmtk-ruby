@@ -45,7 +45,7 @@ impl<PE: ProcessEdgesWork<VM = Ruby>> GCWork<Ruby> for ObjectsToObjectsWork<PE> 
         trace!("End: tracing objects");
 
         // Unlike ProcessEdgesWork, we collect the list of objects and immediately scan all of them.
-        let objects_to_scan = self.process_edges.nodes.drain(..).collect::<Vec<_>>();
+        let objects_to_scan = self.process_edges.nodes.take();
         let mut dest_objs = Vec::<ObjectReference>::new();
 
         let gc_thread_tls = GCThreadTLS::from_upcall_check();
