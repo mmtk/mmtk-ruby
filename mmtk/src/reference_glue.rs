@@ -6,6 +6,8 @@ use mmtk::vm::ReferenceGlue;
 pub struct VMReferenceGlue {}
 
 impl ReferenceGlue<Ruby> for VMReferenceGlue {
+    type FinalizableType = ObjectReference;
+
     fn get_referent(_object: ObjectReference) -> ObjectReference {
         unimplemented!()
     }
