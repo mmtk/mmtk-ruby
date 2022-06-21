@@ -26,7 +26,7 @@ env_logger = "0.9.0"
 memoffset = { version = "0.6.5", features = ["unstable_const"] }
 
 # Uncomment this to use mmtk-core from the official repository.
-mmtk = { git = "https://github.com/mmtk/mmtk-core.git", features = ["is_mmtk_object"]}
+mmtk = { git = "https://github.com/wks/mmtk-core.git", branch = "ruby-friendly-tracing", features = ["is_mmtk_object"]}
 
 # Uncomment this to use mmtk-core from a local repository.
 #mmtk = { path = "../../mmtk-core", features = ["is_mmtk_object"] }
