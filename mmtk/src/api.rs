@@ -1,8 +1,7 @@
 // All functions here are extern function. There is no point for marking them as unsafe.
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
-use crate::abi::{self, GCThreadTLS};
-
+use crate::abi;
 use crate::Ruby;
 use crate::SINGLETON;
 use libc::c_char;
@@ -198,10 +197,4 @@ pub extern "C" fn mmtk_poll_finalizable(include_live: bool) -> ObjectReference {
         .finalizer_processor
         .poll_finalizable(include_live)
         .unwrap_or_else(|| unsafe { Address::zero().to_object_reference() })
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_flush_mark_buffer(gc_thread_tls: *mut GCThreadTLS) {
-    let gc_thread_tls = GCThreadTLS::check_cast(gc_thread_tls);
-    gc_thread_tls.flush_buffer();
 }

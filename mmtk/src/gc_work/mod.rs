@@ -5,7 +5,7 @@ use mmtk::{
     MMTK,
 };
 
-use crate::{abi::GCThreadTLS, address_buffer::FilledBuffer, upcalls, Ruby, SINGLETON};
+use crate::{abi::GCThreadTLS, address_buffer::FilledBuffer, Ruby, SINGLETON};
 
 pub struct ObjectsToObjectsWork<PE: ProcessEdgesWork> {
     process_edges: PE,
@@ -45,21 +45,21 @@ impl<PE: ProcessEdgesWork<VM = Ruby>> GCWork<Ruby> for ObjectsToObjectsWork<PE> 
         trace!("End: tracing objects");
 
         // Unlike ProcessEdgesWork, we collect the list of objects and immediately scan all of them.
-        let objects_to_scan = self.process_edges.nodes.take();
+        let _objects_to_scan = self.process_edges.nodes.take();
         let mut dest_objs = Vec::<ObjectReference>::new();
 
-        let gc_thread_tls = GCThreadTLS::from_upcall_check();
-        let callback = |_, filled_buffer: FilledBuffer| {
+        let _gc_thread_tls = GCThreadTLS::from_upcall_check();
+        let _callback = |_: ObjectReference, filled_buffer: FilledBuffer| {
             dest_objs.extend(filled_buffer.as_objref_vec().iter());
         };
         trace!("Begin: run_with_buffer_callback");
-        gc_thread_tls.run_with_buffer_callback(callback, |_| {
-            for obj in objects_to_scan.iter() {
-                trace!("Scan object: {}", obj);
-                assert!(!obj.is_null());
-                (upcalls().scan_object_ruby_style)(*obj);
-            }
-        });
+        // gc_thread_tls.run_with_buffer_callback(callback, |_| {
+        //     for obj in objects_to_scan.iter() {
+        //         trace!("Scan object: {}", obj);
+        //         assert!(!obj.is_null());
+        //         (upcalls().scan_object_ruby_style)(*obj);
+        //     }
+        // });
         trace!("End: run_with_buffer_callback");
 
         if log_enabled!(log::Level::Trace) {

@@ -1,4 +1,3 @@
-use crate::address_buffer::{AddressBuffer, FilledBuffer};
 use crate::{upcalls, Ruby};
 use mmtk::scheduler::{GCController, GCWorker};
 use mmtk::util::{ObjectReference, VMMutatorThread, VMWorkerThread};
@@ -7,15 +6,81 @@ use mmtk::Mutator;
 pub const GC_THREAD_KIND_CONTROLLER: libc::c_int = 0;
 pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
-pub type BufferCallback = Box<dyn FnMut(&'static mut GCWorker<Ruby>, FilledBuffer)>;
+#[repr(C)]
+pub struct ObjectClosure {
+    /// The function to be called from C.  Must match the signature of `ObjectClosure::c_function`
+    pub c_function:
+        *const fn(*mut libc::c_void, *mut libc::c_void, ObjectReference) -> ObjectReference,
+    /// The pointer to the Rust-level closure object.
+    pub rust_closure: *mut libc::c_void,
+}
+
+impl Default for ObjectClosure {
+    fn default() -> Self {
+        Self {
+            c_function: Self::c_function_unregistered as _,
+            rust_closure: std::ptr::null_mut(),
+        }
+    }
+}
+
+impl ObjectClosure {
+    /// Set this ObjectClosure temporarily to `visit_object`, and execute `f`.  During the execution of
+    /// `f`, the Ruby VM may call this ObjectClosure.  When the Ruby VM calls this ObjectClosure,
+    /// it effectively calls `visit_object`.
+    ///
+    /// This method is intended to run Ruby VM code in `f` with temporarily modified behavior of
+    /// `rb_gc_mark`, `rb_gc_mark_movable` and `rb_gc_location`
+    ///
+    /// Both `f` and `visit_object` may access and modify local variables in the environment where
+    /// `set_temporarily_and_run_code` called.
+    ///
+    /// Note that this function is not reentrant.  Don't call this function in either `callback` or
+    /// `f`.
+    pub fn set_temporarily_and_run_code<'env, T, F1, F2>(
+        &mut self,
+        mut visit_object: F1,
+        f: F2,
+    ) -> T
+    where
+        F1: 'env + FnMut(&'static mut GCWorker<Ruby>, ObjectReference) -> ObjectReference,
+        F2: 'env + FnOnce() -> T,
+    {
+        self.c_function = Self::c_function_registered::<F1> as *const _;
+        self.rust_closure = &mut visit_object as *mut F1 as *mut libc::c_void;
+        let result = f();
+        *self = Default::default();
+        result
+    }
+
+    extern "C" fn c_function_registered<F>(
+        rust_closure: *mut libc::c_void,
+        worker: *mut libc::c_void,
+        object: ObjectReference,
+    ) -> ObjectReference
+    where
+        F: FnMut(&'static mut GCWorker<Ruby>, ObjectReference) -> ObjectReference,
+    {
+        let rust_closure = unsafe { &mut *(rust_closure as *mut F) };
+        let worker = unsafe { &mut *(worker as *mut GCWorker<Ruby>) };
+        rust_closure(worker, object)
+    }
+
+    extern "C" fn c_function_unregistered(
+        _rust_closure: *mut libc::c_void,
+        worker: *mut libc::c_void,
+        object: ObjectReference,
+    ) -> ObjectReference {
+        let worker = unsafe { &mut *(worker as *mut GCWorker<Ruby>) };
+        panic!("object_closure is not set.  worker ordinal: {}, object: {}", worker.ordinal, object);
+    }
+}
 
 #[repr(C)]
 pub struct GCThreadTLS {
     pub kind: libc::c_int,
     pub gc_context: *mut libc::c_void,
-    pub mark_buffer: AddressBuffer,
-    // The following are only accessible from Rust
-    pub buffer_callback: Option<BufferCallback>,
+    pub object_closure: ObjectClosure,
 }
 
 impl GCThreadTLS {
@@ -23,8 +88,7 @@ impl GCThreadTLS {
         Self {
             kind,
             gc_context,
-            mark_buffer: AddressBuffer::create(),
-            buffer_callback: None,
+            object_closure: Default::default(),
         }
     }
 
@@ -68,58 +132,6 @@ impl GCThreadTLS {
         // NOTE: The returned ref points to the worker which does not have the same lifetime as self.
         assert!(self.kind == GC_THREAD_KIND_WORKER);
         unsafe { &mut *(self.gc_context as *mut GCWorker<Ruby>) }
-    }
-
-    /// Executes `f`. During the execution of `f`, if the Ruby VM delivers a mark buffer,
-    /// `callback` will be called with the filled buffer as the argument.
-    ///
-    /// Both `f` and `callback` may access and modify local variables in the environment where
-    /// `run_with_buffer_callback` called.
-    ///
-    /// Note that this function is not reentrant.  Don't call this function in either `callback` or
-    /// `f`.
-    pub fn run_with_buffer_callback<'env, T, F1, F2>(&mut self, callback: F1, f: F2) -> T
-    where
-        F1: 'env + FnMut(&'static mut GCWorker<Ruby>, FilledBuffer),
-        F2: 'env + FnOnce(&mut Self) -> T,
-    {
-        let boxed_callback: Box<dyn 'env + FnMut(&'static mut GCWorker<Ruby>, FilledBuffer)> =
-            Box::new(callback);
-        // Unsafe: This `transmute` casts away the lifetime `'env`. By doing this, the callback
-        // closure can be stored into `self`, a thread-local data structure, so that C code in the
-        // VM can call it back.  This is unsafe, because once the `callback` is stored in a
-        // thread-local data structure, the callback may outlive the variables it captured by
-        // reference.  However, the `self.bufer_callback = None;` line below destroys the callback
-        // so that we can guarantee it will not be called after `run_with_buffer_callback` returns.
-        // So this function is safe as a whole.
-        let boxed_callback: Box<dyn 'static + FnMut(&'static mut GCWorker<Ruby>, FilledBuffer)> =
-            unsafe { std::mem::transmute(boxed_callback) };
-
-        self.buffer_callback = Some(boxed_callback);
-        let result = f(self);
-        self.flush_buffer();
-        self.buffer_callback = None;
-
-        result
-    }
-
-    pub fn flush_buffer(&mut self) {
-        if self.mark_buffer.is_empty() {
-            return;
-        }
-
-        let gc_worker = self.worker();
-
-        let maybe_callback = &mut self.buffer_callback;
-        let callback = maybe_callback.as_deref_mut().unwrap_or_else(|| {
-            panic!(
-                "buffer callback not set.  Current thread: {:?}",
-                std::thread::current().name()
-            );
-        });
-
-        let filled_buffer = self.mark_buffer.take_as_filled_buffer();
-        callback(gc_worker, filled_buffer);
     }
 }
 

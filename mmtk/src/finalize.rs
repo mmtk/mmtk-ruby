@@ -20,7 +20,7 @@ impl FinalizerProcessor {
         F: FnOnce(&Vec<ObjectReference>) -> T,
     {
         let guard = self.candidates.lock().unwrap();
-        callback(&*guard)
+        callback(&guard)
     }
 
     pub fn register_finalizable(&self, reff: ObjectReference) {

@@ -1,67 +1,17 @@
 use crate::abi::GCThreadTLS;
-use crate::address_buffer::FilledBuffer;
-use crate::gc_work::ObjectsToObjectsWork;
-use crate::{upcalls, Ruby, SINGLETON};
-use mmtk::scheduler::{ProcessEdgesWork, WorkBucketStage};
-use mmtk::util::{ObjectReference, VMWorkerThread};
-use mmtk::vm::{Scanning, EdgeVisitor};
-use mmtk::{memory_manager, Mutator, MutatorContext};
 
+use crate::{upcalls, Ruby};
+use mmtk::util::{ObjectReference, VMWorkerThread};
+use mmtk::vm::{EdgeVisitor, ObjectTracer, RootsWorkFactory, Scanning};
+use mmtk::{Mutator, MutatorContext};
 
 pub struct VMScanning {}
 
 impl Scanning<Ruby> for VMScanning {
     const SINGLE_THREAD_MUTATOR_SCANNING: bool = false;
 
-    fn scan_objects<EV: EdgeVisitor>(
-        _tls: VMWorkerThread,
-        _objects: &[ObjectReference],
-        _edge_visitor: &mut EV,
-    ) {
-        panic!("This should not be called.  We scan objects by directly calling into Ruby");
-    }
-
-    fn scan_thread_roots<W: ProcessEdgesWork<VM = Ruby>>() {
-        (upcalls().scan_thread_roots)()
-    }
-
-    fn scan_thread_root<W: ProcessEdgesWork<VM = Ruby>>(
-        mutator: &'static mut Mutator<Ruby>,
-        tls: VMWorkerThread,
-    ) {
-        let gc_tls = GCThreadTLS::from_vwt_check(tls);
-        let callback = |_, filled_buffer: FilledBuffer| {
-            debug!("[scan_thread_root] Buffer delivered.");
-            let bucket = WorkBucketStage::Closure;
-            let packet = ObjectsToObjectsWork::<W>::new(filled_buffer.as_objref_vec());
-            memory_manager::add_work_packet(&SINGLETON, bucket, packet);
-        };
-        gc_tls.run_with_buffer_callback(callback, |_gc_tls| {
-            (upcalls().scan_thread_root)(mutator.get_tls(), tls);
-        });
-    }
-
-    fn scan_vm_specific_roots<W: ProcessEdgesWork<VM = Ruby>>() {
-        let gc_tls = GCThreadTLS::from_upcall_check();
-        let callback = |_, filled_buffer: FilledBuffer| {
-            debug!("[scan_vm_specific_roots] Buffer delivered.");
-            let bucket = WorkBucketStage::Closure;
-            let packet = ObjectsToObjectsWork::<W>::new(filled_buffer.as_objref_vec());
-            memory_manager::add_work_packet(&SINGLETON, bucket, packet);
-        };
-        gc_tls.run_with_buffer_callback(callback, |_gc_tls| {
-            (upcalls().scan_vm_specific_roots)();
-        });
-        {
-            // FIXME: This is a workaround.  Obviously it will keep all finalizable objects alive until program exits.
-            debug!("[scan_vm_specific_roots] Enqueueing candidates.");
-            let candidates = crate::binding()
-                .finalizer_processor
-                .with_candidates(|v| v.to_vec());
-            let bucket = WorkBucketStage::Closure;
-            let packet = ObjectsToObjectsWork::<W>::new(candidates);
-            memory_manager::add_work_packet(&SINGLETON, bucket, packet);
-        }
+    fn support_edge_enqueuing(_tls: VMWorkerThread, _object: ObjectReference) -> bool {
+        false
     }
 
     fn scan_object<EV: EdgeVisitor>(
@@ -72,8 +22,57 @@ impl Scanning<Ruby> for VMScanning {
         panic!("This should not be called.  We scan objects by directly calling into Ruby");
     }
 
+    fn scan_object_and_trace_edges<OT: ObjectTracer>(
+        tls: VMWorkerThread,
+        object: ObjectReference,
+        object_tracer: &mut OT,
+    ) {
+        let gc_tls = GCThreadTLS::from_vwt_check(tls);
+        let visit_object = |_worker, target_object: ObjectReference| {
+            debug!("Tracing object: {}", target_object);
+            debug_assert!(mmtk::memory_manager::is_mmtk_object(target_object.to_address()));
+            object_tracer.trace_object(target_object)
+        };
+        gc_tls
+            .object_closure
+            .set_temporarily_and_run_code(visit_object, || {
+                (upcalls().scan_object_ruby_style)(object);
+            });
+    }
+
     fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {
         // Do nothing
+    }
+
+    fn scan_thread_roots(_tls: VMWorkerThread, _factory: impl RootsWorkFactory) {
+        unreachable!();
+    }
+
+    fn scan_thread_root(
+        tls: VMWorkerThread,
+        mutator: &'static mut Mutator<Ruby>,
+        mut factory: impl RootsWorkFactory,
+    ) {
+        let gc_tls = GCThreadTLS::from_vwt_check(tls);
+        Self::collect_object_roots_in("scan_thread_root", gc_tls, &mut factory, || {
+            (upcalls().scan_thread_root)(mutator.get_tls(), tls);
+        });
+    }
+
+    fn scan_vm_specific_roots(tls: VMWorkerThread, mut factory: impl RootsWorkFactory) {
+        let gc_tls = GCThreadTLS::from_vwt_check(tls);
+        Self::collect_object_roots_in("scan_vm_specific_roots", gc_tls, &mut factory, || {
+            (upcalls().scan_vm_specific_roots)();
+        });
+        {
+            // FIXME: This is a workaround.  Obviously it will keep all finalizable objects alive until program exits.
+            debug!("[scan_vm_specific_roots] Enqueueing candidates.");
+            let candidates = crate::binding()
+                .finalizer_processor
+                .with_candidates(|v| v.to_vec());
+            factory.create_process_node_roots_work(candidates);
+            debug!("[scan_vm_specific_roots] Finished Enqueueing candidates.");
+        }
     }
 
     fn supports_return_barrier() -> bool {
@@ -82,5 +81,32 @@ impl Scanning<Ruby> for VMScanning {
 
     fn prepare_for_roots_re_scanning() {
         todo!()
+    }
+}
+
+impl VMScanning {
+    const OBJECT_BUFFER_SIZE: usize = 4096;
+
+    fn collect_object_roots_in<F: FnMut()>(
+        root_scan_kind: &str,
+        gc_tls: &mut GCThreadTLS,
+        factory: &mut impl RootsWorkFactory,
+        callback: F,
+    ) {
+        let mut buffer: Vec<ObjectReference> = Vec::new();
+        let visit_object = |_, object: ObjectReference| {
+            debug!("[{}] Scanning object: {}", root_scan_kind, object);
+            buffer.push(object);
+            if buffer.len() >= Self::OBJECT_BUFFER_SIZE {
+                factory.create_process_node_roots_work(std::mem::take(&mut buffer));
+            }
+            object
+        };
+        gc_tls
+            .object_closure
+            .set_temporarily_and_run_code(visit_object, callback);
+        if !buffer.is_empty() {
+            factory.create_process_node_roots_work(buffer);
+        }
     }
 }
