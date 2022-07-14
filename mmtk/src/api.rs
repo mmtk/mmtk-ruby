@@ -98,6 +98,11 @@ pub extern "C" fn mmtk_enable_collection() {
 }
 
 #[no_mangle]
+pub extern "C" fn mmtk_plan_name() -> *const libc::c_char {
+    crate::binding().get_plan_name_c()
+}
+
+#[no_mangle]
 pub extern "C" fn mmtk_used_bytes() -> usize {
     memory_manager::used_bytes(&SINGLETON)
 }
