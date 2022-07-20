@@ -21,7 +21,6 @@ pub mod api;
 pub mod binding;
 pub mod collection;
 pub mod finalize;
-pub mod gc_work;
 pub mod object_model;
 pub mod reference_glue;
 pub mod scanning;

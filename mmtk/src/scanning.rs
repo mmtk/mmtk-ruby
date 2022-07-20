@@ -19,7 +19,7 @@ impl Scanning<Ruby> for VMScanning {
         _object: ObjectReference,
         _edge_visitor: &mut EV,
     ) {
-        panic!("This should not be called.  We scan objects by directly calling into Ruby");
+        unreachable!("We have not enabled edge enqueuing for any types, yet.");
     }
 
     fn scan_object_and_trace_edges<OT: ObjectTracer>(
@@ -29,7 +29,7 @@ impl Scanning<Ruby> for VMScanning {
     ) {
         let gc_tls = GCThreadTLS::from_vwt_check(tls);
         let visit_object = |_worker, target_object: ObjectReference| {
-            debug!("Tracing object: {}", target_object);
+            trace!("Tracing object: {} -> {}", object, target_object);
             debug_assert!(mmtk::memory_manager::is_mmtk_object(target_object.to_address()));
             object_tracer.trace_object(target_object)
         };
