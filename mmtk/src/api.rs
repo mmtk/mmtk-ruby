@@ -3,8 +3,9 @@
 
 use crate::abi;
 use crate::Ruby;
-use crate::SINGLETON;
-use libc::c_char;
+use crate::mmtk;
+use crate::binding::RubyBinding;
+use mmtk::MMTKBuilder;
 use mmtk::memory_manager;
 use mmtk::scheduler::{GCController, GCWorker};
 use mmtk::util::constants::MIN_OBJECT_SIZE;
@@ -12,25 +13,23 @@ use mmtk::util::{Address, ObjectReference};
 use mmtk::util::{VMMutatorThread, VMThread, VMWorkerThread};
 use mmtk::AllocationSemantics;
 use mmtk::Mutator;
-use mmtk::MMTK;
-use std::ffi::CStr;
 
 #[no_mangle]
 pub extern "C" fn mmtk_init_binding(heap_size: usize, upcalls: *const abi::RubyUpcalls) {
-    // # Safety
-    // Casting `SINGLETON` as mutable is safe because `gc_init` will only be executed once by a single thread during startup.
-    #[allow(clippy::cast_ref_to_mut)]
-    let singleton_mut = unsafe { &mut *(&*SINGLETON as *const MMTK<Ruby> as *mut MMTK<Ruby>) };
-    memory_manager::gc_init(singleton_mut, heap_size);
+    let mut builder = MMTKBuilder::default();
+    builder.options.heap_size.set(heap_size);
+    let mmtk = builder.build();
+    let mmtk_static = Box::leak(Box::new(mmtk));
+    let binding = RubyBinding::new(mmtk_static, upcalls);
 
-    unsafe {
-        crate::UPCALLS = upcalls;
-    }
+    crate::BINDING.set(binding).unwrap_or_else(|_| {
+        panic!("Binding is already initialized")
+    });
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_bind_mutator(tls: VMMutatorThread) -> *mut Mutator<Ruby> {
-    Box::into_raw(memory_manager::bind_mutator(&SINGLETON, tls))
+    Box::into_raw(memory_manager::bind_mutator(mmtk(), tls))
 }
 
 #[no_mangle]
@@ -77,23 +76,23 @@ pub unsafe extern "C" fn mmtk_start_control_collector(
     controller: *mut GCController<Ruby>,
 ) {
     let mut controller = Box::from_raw(controller);
-    memory_manager::start_control_collector(&SINGLETON, tls, &mut controller);
+    memory_manager::start_control_collector(mmtk(), tls, &mut controller);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn mmtk_start_worker(tls: VMWorkerThread, worker: *mut GCWorker<Ruby>) {
     let mut worker = Box::from_raw(worker);
-    memory_manager::start_worker::<Ruby>(&SINGLETON, tls, &mut worker)
+    memory_manager::start_worker::<Ruby>(mmtk(), tls, &mut worker)
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_initialize_collection(tls: VMThread) {
-    memory_manager::initialize_collection(&SINGLETON, tls)
+    memory_manager::initialize_collection(mmtk(), tls)
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_enable_collection() {
-    memory_manager::enable_collection(&SINGLETON)
+    memory_manager::enable_collection(mmtk())
 }
 
 #[no_mangle]
@@ -103,17 +102,17 @@ pub extern "C" fn mmtk_plan_name() -> *const libc::c_char {
 
 #[no_mangle]
 pub extern "C" fn mmtk_used_bytes() -> usize {
-    memory_manager::used_bytes(&SINGLETON)
+    memory_manager::used_bytes(mmtk())
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_free_bytes() -> usize {
-    memory_manager::free_bytes(&SINGLETON)
+    memory_manager::free_bytes(mmtk())
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_total_bytes() -> usize {
-    memory_manager::total_bytes(&SINGLETON)
+    memory_manager::total_bytes(mmtk())
 }
 
 #[no_mangle]
@@ -130,48 +129,37 @@ pub extern "C" fn mmtk_is_mmtk_object(addr: Address) -> bool {
 
 #[no_mangle]
 pub extern "C" fn mmtk_modify_check(object: ObjectReference) {
-    memory_manager::modify_check(&SINGLETON, object)
+    memory_manager::modify_check(mmtk(), object)
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_handle_user_collection_request(tls: VMMutatorThread) {
-    memory_manager::handle_user_collection_request::<Ruby>(&SINGLETON, tls);
+    memory_manager::handle_user_collection_request::<Ruby>(mmtk(), tls);
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_add_weak_candidate(reff: ObjectReference) {
-    memory_manager::add_weak_candidate(&SINGLETON, reff)
+    memory_manager::add_weak_candidate(mmtk(), reff)
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_add_soft_candidate(reff: ObjectReference) {
-    memory_manager::add_soft_candidate(&SINGLETON, reff)
+    memory_manager::add_soft_candidate(mmtk(), reff)
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_add_phantom_candidate(reff: ObjectReference) {
-    memory_manager::add_phantom_candidate(&SINGLETON, reff)
+    memory_manager::add_phantom_candidate(mmtk(), reff)
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_harness_begin(tls: VMMutatorThread) {
-    memory_manager::harness_begin(&SINGLETON, tls)
+    memory_manager::harness_begin(mmtk(), tls)
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_harness_end(_tls: VMMutatorThread) {
-    memory_manager::harness_end(&SINGLETON)
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_process(name: *const c_char, value: *const c_char) -> bool {
-    let name_str: &CStr = unsafe { CStr::from_ptr(name) };
-    let value_str: &CStr = unsafe { CStr::from_ptr(value) };
-    memory_manager::process(
-        &SINGLETON,
-        name_str.to_str().unwrap(),
-        value_str.to_str().unwrap(),
-    )
+    memory_manager::harness_end(mmtk())
 }
 
 #[no_mangle]

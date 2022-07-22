@@ -1,6 +1,6 @@
 use crate::abi::GCThreadTLS;
 
-use crate::{upcalls, Ruby, SINGLETON};
+use crate::{upcalls, Ruby, mmtk};
 use mmtk::scheduler::*;
 use mmtk::util::{VMMutatorThread, VMThread, VMWorkerThread};
 use mmtk::vm::{Collection, GCThreadContext};
@@ -39,7 +39,7 @@ impl Collection<Ruby> for VMCollection {
                             Box::into_raw(Box::new(GCThreadTLS::for_controller(ptr_controller)));
                         (upcalls().init_gc_worker_thread)(gc_thread_tls);
                         memory_manager::start_control_collector(
-                            &SINGLETON,
+                            mmtk(),
                             GCThreadTLS::to_vwt(gc_thread_tls),
                             &mut controller,
                         )
@@ -56,7 +56,7 @@ impl Collection<Ruby> for VMCollection {
                             Box::into_raw(Box::new(GCThreadTLS::for_worker(ptr_worker)));
                         (upcalls().init_gc_worker_thread)(gc_thread_tls);
                         memory_manager::start_worker(
-                            &SINGLETON,
+                            mmtk(),
                             GCThreadTLS::to_vwt(gc_thread_tls),
                             &mut worker,
                         )

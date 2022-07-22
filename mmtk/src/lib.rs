@@ -4,15 +4,15 @@
 extern crate libc;
 extern crate mmtk;
 #[macro_use]
-extern crate lazy_static;
-#[macro_use]
 extern crate log;
 #[macro_use]
 extern crate memoffset;
 
+use abi::RubyUpcalls;
 use binding::RubyBinding;
 use mmtk::vm::VMBinding;
 use mmtk::MMTK;
+use once_cell::sync::OnceCell;
 
 pub mod abi;
 pub mod active_plan;
@@ -36,17 +36,16 @@ impl VMBinding for Ruby {
     type VMReferenceGlue = reference_glue::VMReferenceGlue;
 }
 
-lazy_static! {
-    pub static ref SINGLETON: MMTK<Ruby> = MMTK::new();
-    pub static ref BINDING: RubyBinding = RubyBinding::new();
+pub static BINDING: OnceCell<RubyBinding> = OnceCell::new();
+
+pub fn binding<'b>() -> &'b RubyBinding {
+    BINDING.get().expect("Attempt to use the binding before it is initialization")
 }
 
-pub static mut UPCALLS: *const abi::RubyUpcalls = std::ptr::null();
-
-pub fn binding() -> &'static RubyBinding {
-    &BINDING
+pub fn mmtk() -> &'static MMTK<Ruby> {
+    binding().mmtk
 }
 
-pub fn upcalls() -> &'static abi::RubyUpcalls {
-    unsafe { &*UPCALLS }
+pub fn upcalls() -> &'static RubyUpcalls {
+    binding().upcalls()
 }

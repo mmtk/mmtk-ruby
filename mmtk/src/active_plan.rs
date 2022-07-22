@@ -1,6 +1,6 @@
 use crate::upcalls;
 use crate::Ruby;
-use crate::SINGLETON;
+use crate::mmtk;
 use mmtk::util::opaque_pointer::*;
 use mmtk::vm::ActivePlan;
 use mmtk::Mutator;
@@ -10,7 +10,7 @@ pub struct VMActivePlan {}
 
 impl ActivePlan<Ruby> for VMActivePlan {
     fn global() -> &'static dyn Plan<VM = Ruby> {
-        SINGLETON.get_plan()
+        mmtk().get_plan()
     }
 
     fn number_of_mutators() -> usize {
