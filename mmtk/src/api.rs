@@ -1,25 +1,60 @@
 // All functions here are extern function. There is no point for marking them as unsafe.
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
+use std::ffi::CStr;
+
 use crate::abi;
 use crate::binding::RubyBinding;
 use crate::mmtk;
 use crate::Ruby;
 use mmtk::memory_manager;
+use mmtk::memory_manager::mmtk_init;
 use mmtk::scheduler::{GCController, GCWorker};
 use mmtk::util::constants::MIN_OBJECT_SIZE;
+use mmtk::util::options::PlanSelector;
 use mmtk::util::{Address, ObjectReference};
 use mmtk::util::{VMMutatorThread, VMThread, VMWorkerThread};
 use mmtk::AllocationSemantics;
 use mmtk::MMTKBuilder;
 use mmtk::Mutator;
 
+/// Create an MMTKBuilder instance with default options.
+/// This instance shall be consumed by `mmtk_init_binding`.
 #[no_mangle]
-pub extern "C" fn mmtk_init_binding(heap_size: usize, upcalls: *const abi::RubyUpcalls) {
-    let mut builder = MMTKBuilder::default();
+pub extern "C" fn mmtk_builder_default() -> *mut MMTKBuilder {
+    Box::into_raw(Box::new(MMTKBuilder::default()))
+}
+
+/// Set the `heap_size` option.
+#[no_mangle]
+pub extern "C" fn mmtk_builder_set_heap_size(builder: *mut MMTKBuilder, heap_size: usize) {
+    let builder = unsafe { &mut *builder };
     builder.options.heap_size.set(heap_size);
-    let mmtk = builder.build();
-    let mmtk_static = Box::leak(Box::new(mmtk));
+}
+
+/// Set the plan.  `plan_name` is a case-sensitive C-style ('\0'-terminated) string matching
+/// one of the cases of `enum PlanSelector`.
+#[no_mangle]
+pub extern "C" fn mmtk_builder_set_plan(builder: *mut MMTKBuilder, plan_name: *const libc::c_char) {
+    let builder = unsafe { &mut *builder };
+    let plan_name_cstr = unsafe { CStr::from_ptr(plan_name) };
+    let plan_name_str = plan_name_cstr.to_str().unwrap();
+    let plan_selector = plan_name_str.parse::<PlanSelector>().unwrap();
+    builder.options.plan.set(plan_selector);
+}
+
+/// Build an MMTk instance.
+///
+/// -   `builder` is the pointer to the `MMTKBuilder` instance cretaed by the
+///     `mmtk_builder_default()` function, and the `MMTKBuilder` will be consumed after building
+///     the MMTk instance.
+/// -   `upcalls` points to the struct that contains upcalls.  It is allocated in C as static.
+#[no_mangle]
+pub extern "C" fn mmtk_init_binding(builder: *mut MMTKBuilder, upcalls: *const abi::RubyUpcalls) {
+    let builder = unsafe { Box::from_raw(builder) };
+    let mmtk_boxed = mmtk_init(&builder);
+    let mmtk_static = Box::leak(Box::new(mmtk_boxed));
+
     let binding = RubyBinding::new(mmtk_static, upcalls);
 
     crate::BINDING
