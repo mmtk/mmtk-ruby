@@ -23,7 +23,6 @@ libc = "0.2"
 lazy_static = "1.1"
 log = "0.4.14"
 env_logger = "0.9.0"
-memoffset = { version = "0.6.5", features = ["unstable_const"] }
 once_cell = "1.13.0"
 
 # Uncomment this to use mmtk-core from the official repository.

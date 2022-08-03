@@ -5,20 +5,6 @@ use mmtk::vm::*;
 
 pub struct VMObjectModel {}
 
-mod constants {}
-
-mod ruby_types {
-    /// Ruby's VALUE type.
-    pub type VALUE = libc::c_ulong;
-
-    #[repr(C)]
-    pub struct RMoved {
-        pub flags: VALUE,
-        pub dummy: VALUE,
-        pub destination: VALUE,
-    }
-}
-
 impl VMObjectModel {
     const OBJREF_OFFSET: usize = 8;
 }
@@ -26,8 +12,9 @@ impl VMObjectModel {
 impl ObjectModel<Ruby> for VMObjectModel {
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
 
+    // FIXME: 0 is probably not right.  We will correct this once we start to support copying GC.
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec =
-        VMLocalForwardingPointerSpec::in_header(offset_of!(ruby_types::RMoved, destination) as isize);
+        VMLocalForwardingPointerSpec::in_header(0);
 
     const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec =
         VMLocalForwardingBitsSpec::side_first();

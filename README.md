@@ -28,12 +28,9 @@ git clone https://github.com/mmtk/mmtk-ruby.git
 
 ```bash
 pushd mmtk-ruby/mmtk
-cargo +nightly build --release
+cargo build --release
 popd
 ```
-
-*Note: mmtk-core uses the "stable" toolchain by default, but currently
-mmtk-ruby depends on a feature only available in "nightly" Rust.*
 
 This will give you a `libmmtk_ruby.so` in the `target/release` directory.
 
@@ -85,7 +82,7 @@ build to coexist in the `target/debug` and `target/release` directories.
 
 ```bash
 pushd mmtk-ruby/mmtk
-cargo +nightly build
+cargo build
 popd
 ```
 

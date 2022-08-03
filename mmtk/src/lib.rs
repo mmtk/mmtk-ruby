@@ -1,12 +1,7 @@
-#![feature(vec_into_raw_parts)]
-#![feature(const_ptr_offset_from)]
-
 extern crate libc;
 extern crate mmtk;
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate memoffset;
 
 use abi::RubyUpcalls;
 use binding::RubyBinding;
@@ -16,7 +11,6 @@ use once_cell::sync::OnceCell;
 
 pub mod abi;
 pub mod active_plan;
-pub mod address_buffer;
 pub mod api;
 pub mod binding;
 pub mod collection;
