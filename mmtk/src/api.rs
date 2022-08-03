@@ -2,16 +2,16 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use crate::abi;
-use crate::Ruby;
-use crate::mmtk;
 use crate::binding::RubyBinding;
-use mmtk::MMTKBuilder;
+use crate::mmtk;
+use crate::Ruby;
 use mmtk::memory_manager;
 use mmtk::scheduler::{GCController, GCWorker};
 use mmtk::util::constants::MIN_OBJECT_SIZE;
 use mmtk::util::{Address, ObjectReference};
 use mmtk::util::{VMMutatorThread, VMThread, VMWorkerThread};
 use mmtk::AllocationSemantics;
+use mmtk::MMTKBuilder;
 use mmtk::Mutator;
 
 #[no_mangle]
@@ -22,9 +22,9 @@ pub extern "C" fn mmtk_init_binding(heap_size: usize, upcalls: *const abi::RubyU
     let mmtk_static = Box::leak(Box::new(mmtk));
     let binding = RubyBinding::new(mmtk_static, upcalls);
 
-    crate::BINDING.set(binding).unwrap_or_else(|_| {
-        panic!("Binding is already initialized")
-    });
+    crate::BINDING
+        .set(binding)
+        .unwrap_or_else(|_| panic!("Binding is already initialized"));
 }
 
 #[no_mangle]

@@ -30,7 +30,9 @@ impl Scanning<Ruby> for VMScanning {
         let gc_tls = GCThreadTLS::from_vwt_check(tls);
         let visit_object = |_worker, target_object: ObjectReference| {
             trace!("Tracing object: {} -> {}", object, target_object);
-            debug_assert!(mmtk::memory_manager::is_mmtk_object(target_object.to_address()));
+            debug_assert!(mmtk::memory_manager::is_mmtk_object(
+                target_object.to_address()
+            ));
             object_tracer.trace_object(target_object)
         };
         gc_tls

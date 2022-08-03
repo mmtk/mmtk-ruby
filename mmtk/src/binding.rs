@@ -3,9 +3,9 @@ use std::sync::Mutex;
 
 use mmtk::MMTK;
 
-use crate::Ruby;
 use crate::abi;
 use crate::finalize;
+use crate::Ruby;
 
 pub struct RubyBinding {
     pub mmtk: &'static MMTK<Ruby>,
@@ -39,10 +39,8 @@ impl RubyBinding {
         let mut plan_name = self.plan_name.lock().unwrap();
         if plan_name.is_none() {
             let name_string = format!("{:?}", *self.mmtk.get_options().plan);
-            let c_string = CString::new(name_string).unwrap_or_else(|e| {
-                panic!("Failed converting plan name to CString: {}",
-                    e)
-            });
+            let c_string = CString::new(name_string)
+                .unwrap_or_else(|e| panic!("Failed converting plan name to CString: {}", e));
             *plan_name = Some(c_string);
         }
         plan_name.as_deref().unwrap().as_ptr()

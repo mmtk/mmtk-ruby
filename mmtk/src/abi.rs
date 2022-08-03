@@ -46,8 +46,10 @@ impl ObjectClosure {
         F1: 'env + FnMut(&'static mut GCWorker<Ruby>, ObjectReference) -> ObjectReference,
         F2: 'env + FnOnce() -> T,
     {
-        debug_assert!(self.c_function == Self::c_function_unregistered as *const _,
-            "set_temporarily_and_run_code is recursively called.");
+        debug_assert!(
+            self.c_function == Self::c_function_unregistered as *const _,
+            "set_temporarily_and_run_code is recursively called."
+        );
         self.c_function = Self::c_function_registered::<F1> as *const _;
         self.rust_closure = &mut visit_object as *mut F1 as *mut libc::c_void;
         let result = f();
@@ -74,7 +76,10 @@ impl ObjectClosure {
         object: ObjectReference,
     ) -> ObjectReference {
         let worker = unsafe { &mut *(worker as *mut GCWorker<Ruby>) };
-        panic!("object_closure is not set.  worker ordinal: {}, object: {}", worker.ordinal, object);
+        panic!(
+            "object_closure is not set.  worker ordinal: {}, object: {}",
+            worker.ordinal, object
+        );
     }
 }
 

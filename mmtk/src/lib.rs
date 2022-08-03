@@ -33,7 +33,9 @@ impl VMBinding for Ruby {
 pub static BINDING: OnceCell<RubyBinding> = OnceCell::new();
 
 pub fn binding<'b>() -> &'b RubyBinding {
-    BINDING.get().expect("Attempt to use the binding before it is initialization")
+    BINDING
+        .get()
+        .expect("Attempt to use the binding before it is initialization")
 }
 
 pub fn mmtk() -> &'static MMTK<Ruby> {

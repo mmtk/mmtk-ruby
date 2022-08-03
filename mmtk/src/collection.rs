@@ -1,6 +1,6 @@
 use crate::abi::GCThreadTLS;
 
-use crate::{upcalls, Ruby, mmtk};
+use crate::{mmtk, upcalls, Ruby};
 use mmtk::scheduler::*;
 use mmtk::util::{VMMutatorThread, VMThread, VMWorkerThread};
 use mmtk::vm::{Collection, GCThreadContext};

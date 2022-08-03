@@ -1,6 +1,6 @@
+use crate::mmtk;
 use crate::upcalls;
 use crate::Ruby;
-use crate::mmtk;
 use mmtk::util::opaque_pointer::*;
 use mmtk::vm::ActivePlan;
 use mmtk::Mutator;
