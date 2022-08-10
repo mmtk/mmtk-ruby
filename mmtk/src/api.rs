@@ -209,15 +209,10 @@ pub extern "C" fn mmtk_last_heap_address() -> Address {
 
 #[no_mangle]
 pub extern "C" fn mmtk_register_finalizable(reff: ObjectReference) {
-    crate::binding()
-        .finalizer_processor
-        .register_finalizable(reff);
+    memory_manager::add_finalizer(crate::mmtk(), reff)
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_poll_finalizable(include_live: bool) -> ObjectReference {
-    crate::binding()
-        .finalizer_processor
-        .poll_finalizable(include_live)
-        .unwrap_or_else(|| unsafe { Address::zero().to_object_reference() })
+pub extern "C" fn mmtk_poll_finalizable(_include_live: bool) -> ObjectReference {
+    memory_manager::get_finalized_object(crate::mmtk()).unwrap_or(ObjectReference::NULL)
 }
