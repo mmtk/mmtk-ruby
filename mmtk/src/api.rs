@@ -4,6 +4,7 @@
 use std::ffi::CStr;
 
 use crate::abi;
+use crate::abi::RawVecOfObjRef;
 use crate::binding::RubyBinding;
 use crate::mmtk;
 use crate::Ruby;
@@ -208,11 +209,27 @@ pub extern "C" fn mmtk_last_heap_address() -> Address {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_register_finalizable(reff: ObjectReference) {
+pub extern "C" fn mmtk_add_finalizer(reff: ObjectReference) {
     memory_manager::add_finalizer(crate::mmtk(), reff)
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_poll_finalizable(_include_live: bool) -> ObjectReference {
+pub extern "C" fn mmtk_get_finalized_object() -> ObjectReference {
     memory_manager::get_finalized_object(crate::mmtk()).unwrap_or(ObjectReference::NULL)
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_get_all_finalizers() -> RawVecOfObjRef {
+    let vec = memory_manager::get_all_finalizers(crate::mmtk());
+
+    // Note: Vec::into_raw_parts is unstable. We implement it manually.
+    let mut vec = std::mem::ManuallyDrop::new(vec);
+    let (ptr, len, capa) = (vec.as_mut_ptr(), vec.len(), vec.capacity());
+
+    RawVecOfObjRef { ptr, len, capa }
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_free_raw_vec_of_obj_ref(raw_vec: RawVecOfObjRef) {
+    unsafe { Vec::from_raw_parts(raw_vec.ptr, raw_vec.len, raw_vec.capa) };
 }

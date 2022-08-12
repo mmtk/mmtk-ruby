@@ -144,6 +144,14 @@ impl GCThreadTLS {
 
 #[repr(C)]
 #[derive(Clone)]
+pub struct RawVecOfObjRef {
+    pub ptr: *mut ObjectReference,
+    pub len: usize,
+    pub capa: usize,
+}
+
+#[repr(C)]
+#[derive(Clone)]
 pub struct RubyUpcalls {
     pub init_gc_worker_thread: extern "C" fn(gc_worker_tls: *mut GCThreadTLS),
     pub get_gc_thread_tls: extern "C" fn() -> *mut GCThreadTLS,
