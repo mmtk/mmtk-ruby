@@ -220,16 +220,10 @@ pub extern "C" fn mmtk_get_finalized_object() -> ObjectReference {
 
 #[no_mangle]
 pub extern "C" fn mmtk_get_all_finalizers() -> RawVecOfObjRef {
-    let vec = memory_manager::get_all_finalizers(crate::mmtk());
-
-    // Note: Vec::into_raw_parts is unstable. We implement it manually.
-    let mut vec = std::mem::ManuallyDrop::new(vec);
-    let (ptr, len, capa) = (vec.as_mut_ptr(), vec.len(), vec.capacity());
-
-    RawVecOfObjRef { ptr, len, capa }
+    memory_manager::get_all_finalizers(crate::mmtk()).into()
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_free_raw_vec_of_obj_ref(raw_vec: RawVecOfObjRef) {
-    unsafe { Vec::from_raw_parts(raw_vec.ptr, raw_vec.len, raw_vec.capa) };
+    unsafe { raw_vec.into_vec() };
 }
