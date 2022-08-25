@@ -144,6 +144,34 @@ impl GCThreadTLS {
 
 #[repr(C)]
 #[derive(Clone)]
+pub struct RawVecOfObjRef {
+    pub ptr: *mut ObjectReference,
+    pub len: usize,
+    pub capa: usize,
+}
+
+impl RawVecOfObjRef {
+    pub fn from_vec(vec: Vec<ObjectReference>) -> RawVecOfObjRef {
+        // Note: Vec::into_raw_parts is unstable. We implement it manually.
+        let mut vec = std::mem::ManuallyDrop::new(vec);
+        let (ptr, len, capa) = (vec.as_mut_ptr(), vec.len(), vec.capacity());
+
+        RawVecOfObjRef { ptr, len, capa }
+    }
+
+    pub unsafe fn into_vec(self) -> Vec<ObjectReference> {
+        Vec::from_raw_parts(self.ptr, self.len, self.capa)
+    }
+}
+
+impl Into<RawVecOfObjRef> for Vec<ObjectReference> {
+    fn into(self) -> RawVecOfObjRef {
+        RawVecOfObjRef::from_vec(self)
+    }
+}
+
+#[repr(C)]
+#[derive(Clone)]
 pub struct RubyUpcalls {
     pub init_gc_worker_thread: extern "C" fn(gc_worker_tls: *mut GCThreadTLS),
     pub get_gc_thread_tls: extern "C" fn() -> *mut GCThreadTLS,

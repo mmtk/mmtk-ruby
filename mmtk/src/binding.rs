@@ -4,13 +4,11 @@ use std::sync::Mutex;
 use mmtk::MMTK;
 
 use crate::abi;
-use crate::finalize;
 use crate::Ruby;
 
 pub struct RubyBinding {
     pub mmtk: &'static MMTK<Ruby>,
     pub upcalls: *const abi::RubyUpcalls,
-    pub finalizer_processor: finalize::FinalizerProcessor,
     pub plan_name: Mutex<Option<CString>>,
 }
 
@@ -22,7 +20,6 @@ impl RubyBinding {
         Self {
             mmtk,
             upcalls,
-            finalizer_processor: finalize::FinalizerProcessor::new(),
             plan_name: Mutex::new(None),
         }
     }

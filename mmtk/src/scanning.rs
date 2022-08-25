@@ -66,15 +66,6 @@ impl Scanning<Ruby> for VMScanning {
         Self::collect_object_roots_in("scan_vm_specific_roots", gc_tls, &mut factory, || {
             (upcalls().scan_vm_specific_roots)();
         });
-        {
-            // FIXME: This is a workaround.  Obviously it will keep all finalizable objects alive until program exits.
-            debug!("[scan_vm_specific_roots] Enqueueing candidates.");
-            let candidates = crate::binding()
-                .finalizer_processor
-                .with_candidates(|v| v.to_vec());
-            factory.create_process_node_roots_work(candidates);
-            debug!("[scan_vm_specific_roots] Finished Enqueueing candidates.");
-        }
     }
 
     fn supports_return_barrier() -> bool {

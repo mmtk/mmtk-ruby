@@ -4,6 +4,7 @@
 use std::ffi::CStr;
 
 use crate::abi;
+use crate::abi::RawVecOfObjRef;
 use crate::binding::RubyBinding;
 use crate::mmtk;
 use crate::Ruby;
@@ -208,16 +209,21 @@ pub extern "C" fn mmtk_last_heap_address() -> Address {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_register_finalizable(reff: ObjectReference) {
-    crate::binding()
-        .finalizer_processor
-        .register_finalizable(reff);
+pub extern "C" fn mmtk_add_finalizer(reff: ObjectReference) {
+    memory_manager::add_finalizer(crate::mmtk(), reff)
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_poll_finalizable(include_live: bool) -> ObjectReference {
-    crate::binding()
-        .finalizer_processor
-        .poll_finalizable(include_live)
-        .unwrap_or_else(|| unsafe { Address::zero().to_object_reference() })
+pub extern "C" fn mmtk_get_finalized_object() -> ObjectReference {
+    memory_manager::get_finalized_object(crate::mmtk()).unwrap_or(ObjectReference::NULL)
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_get_all_finalizers() -> RawVecOfObjRef {
+    memory_manager::get_all_finalizers(crate::mmtk()).into()
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_free_raw_vec_of_obj_ref(raw_vec: RawVecOfObjRef) {
+    unsafe { raw_vec.into_vec() };
 }
