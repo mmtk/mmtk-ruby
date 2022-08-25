@@ -1,6 +1,6 @@
 use crate::abi::GCThreadTLS;
 
-use crate::{upcalls, Ruby};
+use crate::{upcalls, Ruby, RubyEdge};
 use mmtk::util::{ObjectReference, VMWorkerThread};
 use mmtk::vm::{EdgeVisitor, ObjectTracer, RootsWorkFactory, Scanning};
 use mmtk::{Mutator, MutatorContext};
@@ -14,7 +14,7 @@ impl Scanning<Ruby> for VMScanning {
         false
     }
 
-    fn scan_object<EV: EdgeVisitor>(
+    fn scan_object<EV: EdgeVisitor<RubyEdge>>(
         _tls: VMWorkerThread,
         _object: ObjectReference,
         _edge_visitor: &mut EV,
@@ -46,14 +46,14 @@ impl Scanning<Ruby> for VMScanning {
         // Do nothing
     }
 
-    fn scan_thread_roots(_tls: VMWorkerThread, _factory: impl RootsWorkFactory) {
+    fn scan_thread_roots(_tls: VMWorkerThread, _factory: impl RootsWorkFactory<RubyEdge>) {
         unreachable!();
     }
 
     fn scan_thread_root(
         tls: VMWorkerThread,
         mutator: &'static mut Mutator<Ruby>,
-        mut factory: impl RootsWorkFactory,
+        mut factory: impl RootsWorkFactory<RubyEdge>,
     ) {
         let gc_tls = GCThreadTLS::from_vwt_check(tls);
         Self::collect_object_roots_in("scan_thread_root", gc_tls, &mut factory, || {
@@ -61,7 +61,7 @@ impl Scanning<Ruby> for VMScanning {
         });
     }
 
-    fn scan_vm_specific_roots(tls: VMWorkerThread, mut factory: impl RootsWorkFactory) {
+    fn scan_vm_specific_roots(tls: VMWorkerThread, mut factory: impl RootsWorkFactory<RubyEdge>) {
         let gc_tls = GCThreadTLS::from_vwt_check(tls);
         Self::collect_object_roots_in("scan_vm_specific_roots", gc_tls, &mut factory, || {
             (upcalls().scan_vm_specific_roots)();
@@ -83,7 +83,7 @@ impl VMScanning {
     fn collect_object_roots_in<F: FnMut()>(
         root_scan_kind: &str,
         gc_tls: &mut GCThreadTLS,
-        factory: &mut impl RootsWorkFactory,
+        factory: &mut impl RootsWorkFactory<RubyEdge>,
         callback: F,
     ) {
         let mut buffer: Vec<ObjectReference> = Vec::new();
