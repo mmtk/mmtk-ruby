@@ -6,6 +6,7 @@ extern crate log;
 use abi::RubyUpcalls;
 use binding::RubyBinding;
 use mmtk::vm::VMBinding;
+use mmtk::vm::edge_shape::SimpleEdge;
 use mmtk::MMTK;
 use once_cell::sync::OnceCell;
 
@@ -21,12 +22,19 @@ pub mod scanning;
 #[derive(Default)]
 pub struct Ruby;
 
+/// Ruby edge type, i.e. a slot that holds a VALUE.
+/// Currently we use SimpleEdge.
+/// It doesn't matter, becaues we have not started using edge-enqueuing, yet.
+pub type RubyEdge = SimpleEdge;
+
 impl VMBinding for Ruby {
     type VMObjectModel = object_model::VMObjectModel;
     type VMScanning = scanning::VMScanning;
     type VMCollection = collection::VMCollection;
     type VMActivePlan = active_plan::VMActivePlan;
     type VMReferenceGlue = reference_glue::VMReferenceGlue;
+
+    type VMEdge = RubyEdge;
 }
 
 pub static BINDING: OnceCell<RubyBinding> = OnceCell::new();
