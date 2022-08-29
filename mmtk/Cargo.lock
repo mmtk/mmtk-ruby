@@ -353,7 +353,7 @@ dependencies = [
 [[package]]
 name = "mmtk"
 version = "0.14.0"
-source = "git+https://github.com/wks/mmtk-core.git?branch=edge-shape#24b7e47fc1647efec38f3d41e9419de619f70d99"
+source = "git+https://github.com/mmtk/mmtk-core.git#76131c493be38e421f5fb157f9900f850584554f"
 dependencies = [
  "atomic",
  "atomic-traits",
@@ -376,7 +376,7 @@ dependencies = [
 [[package]]
 name = "mmtk-macros"
 version = "0.14.0"
-source = "git+https://github.com/wks/mmtk-core.git?branch=edge-shape#24b7e47fc1647efec38f3d41e9419de619f70d99"
+source = "git+https://github.com/mmtk/mmtk-core.git#76131c493be38e421f5fb157f9900f850584554f"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
