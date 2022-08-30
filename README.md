@@ -117,10 +117,6 @@ To test Ruby, it is recommended that you add the `ADDITIONAL_EXCLUDES` option to
 make test-all ADDITIONAL_EXCLUDES="--excludes-dir=./test/excludes/_third_party_heap"
 ```
 
-### Build with Vagrant
-
-A Vagrant config for building on platforms other than Linux can be found here: https://github.com/chrisseaton/mmtk-ruby-macos
-
 ## Current status
 
 Known working:
