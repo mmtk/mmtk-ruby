@@ -111,9 +111,14 @@ impl GCThreadTLS {
         unsafe { std::mem::transmute(vwt) }
     }
 
-    pub fn check_cast(ptr: *mut GCThreadTLS) -> &'static mut GCThreadTLS {
-        assert!(ptr != std::ptr::null_mut());
-        let result = unsafe { &mut *ptr };
+    /// Cast a pointer to `GCThreadTLS` to a ref, with assertion for null pointer.
+    ///
+    /// # Safety
+    ///
+    /// Has undefined behavior if `ptr` is invalid.
+    pub unsafe fn check_cast(ptr: *mut GCThreadTLS) -> &'static mut GCThreadTLS {
+        assert!(!ptr.is_null());
+        let result = &mut *ptr;
         debug_assert!({
             let kind = result.kind;
             kind == GC_THREAD_KIND_CONTROLLER || kind == GC_THREAD_KIND_WORKER
@@ -121,16 +126,28 @@ impl GCThreadTLS {
         result
     }
 
-    pub fn from_vwt_check(vwt: VMWorkerThread) -> &'static mut GCThreadTLS {
+    /// Cast a pointer to `VMWorkerThread` to a ref, with assertion for null pointer.
+    ///
+    /// # Safety
+    ///
+    /// Has undefined behavior if `ptr` is invalid.
+    pub unsafe fn from_vwt_check(vwt: VMWorkerThread) -> &'static mut GCThreadTLS {
         let ptr = Self::from_vwt(vwt);
         Self::check_cast(ptr)
     }
 
+    #[allow(clippy::not_unsafe_ptr_arg_deref)] // `transmute` does not dereference pointer
     pub fn to_vwt(ptr: *mut Self) -> VMWorkerThread {
         unsafe { std::mem::transmute(ptr) }
     }
 
-    pub fn from_upcall_check() -> &'static mut GCThreadTLS {
+    /// Get a ref to `GCThreadTLS` from C-level thread-local storage, with assertion for null
+    /// pointer.
+    ///
+    /// # Safety
+    ///
+    /// Has undefined behavior if the pointer held in C-level TLS is invalid.
+    pub unsafe fn from_upcall_check() -> &'static mut GCThreadTLS {
         let ptr = (upcalls().get_gc_thread_tls)();
         Self::check_cast(ptr)
     }
@@ -159,14 +176,17 @@ impl RawVecOfObjRef {
         RawVecOfObjRef { ptr, len, capa }
     }
 
+    /// # Safety
+    ///
+    /// This function turns raw pointer into a Vec without check.
     pub unsafe fn into_vec(self) -> Vec<ObjectReference> {
         Vec::from_raw_parts(self.ptr, self.len, self.capa)
     }
 }
 
-impl Into<RawVecOfObjRef> for Vec<ObjectReference> {
-    fn into(self) -> RawVecOfObjRef {
-        RawVecOfObjRef::from_vec(self)
+impl From<Vec<ObjectReference>> for RawVecOfObjRef {
+    fn from(v: Vec<ObjectReference>) -> Self {
+        Self::from_vec(v)
     }
 }
 

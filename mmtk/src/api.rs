@@ -107,17 +107,17 @@ pub extern "C" fn mmtk_will_never_move(object: ObjectReference) -> bool {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn mmtk_start_control_collector(
+pub extern "C" fn mmtk_start_control_collector(
     tls: VMWorkerThread,
     controller: *mut GCController<Ruby>,
 ) {
-    let mut controller = Box::from_raw(controller);
+    let mut controller = unsafe { Box::from_raw(controller) };
     memory_manager::start_control_collector(mmtk(), tls, &mut controller);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn mmtk_start_worker(tls: VMWorkerThread, worker: *mut GCWorker<Ruby>) {
-    let mut worker = Box::from_raw(worker);
+pub extern "C" fn mmtk_start_worker(tls: VMWorkerThread, worker: *mut GCWorker<Ruby>) {
+    let mut worker = unsafe { Box::from_raw(worker) };
     memory_manager::start_worker::<Ruby>(mmtk(), tls, &mut worker)
 }
 

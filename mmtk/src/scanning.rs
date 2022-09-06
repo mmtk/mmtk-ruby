@@ -27,7 +27,7 @@ impl Scanning<Ruby> for VMScanning {
         object: ObjectReference,
         object_tracer: &mut OT,
     ) {
-        let gc_tls = GCThreadTLS::from_vwt_check(tls);
+        let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
         let visit_object = |_worker, target_object: ObjectReference| {
             trace!("Tracing object: {} -> {}", object, target_object);
             debug_assert!(mmtk::memory_manager::is_mmtk_object(
@@ -55,14 +55,14 @@ impl Scanning<Ruby> for VMScanning {
         mutator: &'static mut Mutator<Ruby>,
         mut factory: impl RootsWorkFactory<RubyEdge>,
     ) {
-        let gc_tls = GCThreadTLS::from_vwt_check(tls);
+        let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
         Self::collect_object_roots_in("scan_thread_root", gc_tls, &mut factory, || {
             (upcalls().scan_thread_root)(mutator.get_tls(), tls);
         });
     }
 
     fn scan_vm_specific_roots(tls: VMWorkerThread, mut factory: impl RootsWorkFactory<RubyEdge>) {
-        let gc_tls = GCThreadTLS::from_vwt_check(tls);
+        let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
         Self::collect_object_roots_in("scan_vm_specific_roots", gc_tls, &mut factory, || {
             (upcalls().scan_vm_specific_roots)();
         });
