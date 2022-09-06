@@ -90,8 +90,10 @@ impl ObjectModel<Ruby> for VMObjectModel {
         todo!()
     }
 
-    fn get_current_size(_object: ObjectReference) -> usize {
-        todo!()
+    fn get_current_size(object: ObjectReference) -> usize {
+        // Currently, a hidden size field of word size is placed before each object.
+        let start = Self::object_start_ref(object);
+        unsafe { start.load::<usize>() }
     }
 
     fn get_type_descriptor(_reference: ObjectReference) -> &'static [i8] {
@@ -102,8 +104,8 @@ impl ObjectModel<Ruby> for VMObjectModel {
         object.to_address() - Self::OBJREF_OFFSET
     }
 
-    fn ref_to_address(_object: ObjectReference) -> Address {
-        todo!()
+    fn ref_to_address(object: ObjectReference) -> Address {
+        object.to_address() - Self::OBJREF_OFFSET
     }
 
     fn dump_object(_object: ObjectReference) {
