@@ -5,8 +5,8 @@ extern crate log;
 
 use abi::RubyUpcalls;
 use binding::RubyBinding;
-use mmtk::vm::VMBinding;
 use mmtk::vm::edge_shape::SimpleEdge;
+use mmtk::vm::VMBinding;
 use mmtk::MMTK;
 use once_cell::sync::OnceCell;
 

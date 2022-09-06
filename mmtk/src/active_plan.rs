@@ -32,7 +32,7 @@ impl ActivePlan<Ruby> for VMActivePlan {
 
     fn get_next_mutator() -> Option<&'static mut Mutator<Ruby>> {
         let ptr = (upcalls().get_next_mutator)();
-        if ptr == std::ptr::null_mut() {
+        if ptr.is_null() {
             None
         } else {
             Some(unsafe { &mut (*ptr) as &'static mut Mutator<Ruby> })
