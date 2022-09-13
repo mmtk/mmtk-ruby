@@ -25,55 +25,6 @@ impl ObjectModel<Ruby> for VMObjectModel {
     const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec =
         VMLocalLOSMarkNurserySpec::side_after(Self::LOCAL_MARK_BIT_SPEC.as_spec());
 
-    fn load_metadata(
-        _metadata_spec: &mmtk::util::metadata::header_metadata::HeaderMetadataSpec,
-        _object: ObjectReference,
-        _mask: Option<usize>,
-        _atomic_ordering: Option<std::sync::atomic::Ordering>,
-    ) -> usize {
-        todo!()
-    }
-
-    fn store_metadata(
-        _metadata_spec: &mmtk::util::metadata::header_metadata::HeaderMetadataSpec,
-        _object: ObjectReference,
-        _val: usize,
-        _mask: Option<usize>,
-        _atomic_ordering: Option<std::sync::atomic::Ordering>,
-    ) {
-        todo!()
-    }
-
-    fn compare_exchange_metadata(
-        _metadata_spec: &mmtk::util::metadata::header_metadata::HeaderMetadataSpec,
-        _object: ObjectReference,
-        _old_val: usize,
-        _new_val: usize,
-        _mask: Option<usize>,
-        _success_order: std::sync::atomic::Ordering,
-        _failure_order: std::sync::atomic::Ordering,
-    ) -> bool {
-        todo!()
-    }
-
-    fn fetch_add_metadata(
-        _metadata_spec: &mmtk::util::metadata::header_metadata::HeaderMetadataSpec,
-        _object: ObjectReference,
-        _val: usize,
-        _order: std::sync::atomic::Ordering,
-    ) -> usize {
-        todo!()
-    }
-
-    fn fetch_sub_metadata(
-        _metadata_spec: &mmtk::util::metadata::header_metadata::HeaderMetadataSpec,
-        _object: ObjectReference,
-        _val: usize,
-        _order: std::sync::atomic::Ordering,
-    ) -> usize {
-        todo!()
-    }
-
     fn copy(
         _from: ObjectReference,
         _semantics: CopySemantics,
