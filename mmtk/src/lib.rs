@@ -5,7 +5,7 @@ extern crate log;
 
 use abi::RubyUpcalls;
 use binding::RubyBinding;
-use mmtk::vm::edge_shape::SimpleEdge;
+use mmtk::vm::edge_shape::{SimpleEdge, UnimplementedMemorySlice};
 use mmtk::vm::VMBinding;
 use mmtk::MMTK;
 use once_cell::sync::OnceCell;
@@ -27,6 +27,11 @@ pub struct Ruby;
 /// It doesn't matter, becaues we have not started using edge-enqueuing, yet.
 pub type RubyEdge = SimpleEdge;
 
+/// Ruby memory slice, i.e. an array of VALUEs.
+/// It is used by array-copy barriers which is supposed to perform bettern than copying array
+/// elements one by one.  At this moment, we just leave it unimplemented.
+pub type RubyMemorySlice = UnimplementedMemorySlice<RubyEdge>;
+
 impl VMBinding for Ruby {
     type VMObjectModel = object_model::VMObjectModel;
     type VMScanning = scanning::VMScanning;
@@ -35,6 +40,7 @@ impl VMBinding for Ruby {
     type VMReferenceGlue = reference_glue::VMReferenceGlue;
 
     type VMEdge = RubyEdge;
+    type VMMemorySlice = RubyMemorySlice;
 }
 
 pub static BINDING: OnceCell<RubyBinding> = OnceCell::new();
