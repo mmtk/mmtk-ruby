@@ -10,11 +10,12 @@ pub const MIN_OBJ_ALIGN: usize = 8; // Even on 32-bit machine.  A Ruby object is
 pub const GC_THREAD_KIND_CONTROLLER: libc::c_int = 0;
 pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
+type ObjectClosureFunction =
+    extern "C" fn(*mut libc::c_void, *mut libc::c_void, ObjectReference) -> ObjectReference;
 #[repr(C)]
 pub struct ObjectClosure {
     /// The function to be called from C.
-    pub c_function:
-        extern "C" fn(*mut libc::c_void, *mut libc::c_void, ObjectReference) -> ObjectReference,
+    pub c_function: ObjectClosureFunction,
     /// The pointer to the Rust-level closure object.
     pub rust_closure: *mut libc::c_void,
 }
@@ -22,11 +23,17 @@ pub struct ObjectClosure {
 impl Default for ObjectClosure {
     fn default() -> Self {
         Self {
-            c_function: Self::c_function_unregistered as _,
+            c_function: THE_UNREGISTERED_CLOSURE_FUNC,
             rust_closure: std::ptr::null_mut(),
         }
     }
 }
+
+/// Rust doesn't require function items to have a unique address.
+/// We therefore force using this particular constant.
+///
+/// See: https://rust-lang.github.io/rust-clippy/master/index.html#fn_address_comparisons
+const THE_UNREGISTERED_CLOSURE_FUNC: ObjectClosureFunction = ObjectClosure::c_function_unregistered;
 
 impl ObjectClosure {
     /// Set this ObjectClosure temporarily to `visit_object`, and execute `f`.  During the execution of
@@ -51,7 +58,7 @@ impl ObjectClosure {
         F2: 'env + FnOnce() -> T,
     {
         debug_assert!(
-            self.c_function == Self::c_function_unregistered,
+            self.c_function == THE_UNREGISTERED_CLOSURE_FUNC,
             "set_temporarily_and_run_code is recursively called."
         );
         self.c_function = Self::c_function_registered::<F1>;
