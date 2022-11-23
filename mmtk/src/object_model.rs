@@ -1,4 +1,4 @@
-use crate::Ruby;
+use crate::{abi, Ruby};
 use mmtk::util::copy::{CopySemantics, GCWorkerCopyContext};
 use mmtk::util::{Address, ObjectReference};
 use mmtk::vm::*;
@@ -6,7 +6,7 @@ use mmtk::vm::*;
 pub struct VMObjectModel {}
 
 impl VMObjectModel {
-    const OBJREF_OFFSET: usize = 8;
+    const OBJREF_OFFSET: usize = abi::OBJREF_OFFSET;
 }
 
 impl ObjectModel<Ruby> for VMObjectModel {
