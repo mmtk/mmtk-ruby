@@ -19,6 +19,14 @@ use mmtk::AllocationSemantics;
 use mmtk::MMTKBuilder;
 use mmtk::Mutator;
 
+// For cbindgen to generate simple type names.
+/// cbindgen:ignore
+pub type RubyGCWorker = GCWorker<Ruby>;
+/// cbindgen:ignore
+pub type RubyGCController = GCController<Ruby>;
+/// cbindgen:ignore
+pub type RubyMutator = Mutator<Ruby>;
+
 /// Create an MMTKBuilder instance with default options.
 /// This instance shall be consumed by `mmtk_init_binding`.
 #[no_mangle]
@@ -46,7 +54,7 @@ pub extern "C" fn mmtk_builder_set_plan(builder: *mut MMTKBuilder, plan_name: *c
 
 /// Build an MMTk instance.
 ///
-/// -   `builder` is the pointer to the `MMTKBuilder` instance cretaed by the
+/// -   `builder` is the pointer to the `MMTKBuilder` instance created by the
 ///     `mmtk_builder_default()` function, and the `MMTKBuilder` will be consumed after building
 ///     the MMTk instance.
 /// -   `upcalls` points to the struct that contains upcalls.  It is allocated in C as static.
@@ -64,18 +72,18 @@ pub extern "C" fn mmtk_init_binding(builder: *mut MMTKBuilder, upcalls: *const a
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_bind_mutator(tls: VMMutatorThread) -> *mut Mutator<Ruby> {
+pub extern "C" fn mmtk_bind_mutator(tls: VMMutatorThread) -> *mut RubyMutator {
     Box::into_raw(memory_manager::bind_mutator(mmtk(), tls))
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_destroy_mutator(mutator: *mut Mutator<Ruby>) {
+pub extern "C" fn mmtk_destroy_mutator(mutator: *mut RubyMutator) {
     memory_manager::destroy_mutator(unsafe { Box::from_raw(mutator) })
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_alloc(
-    mutator: *mut Mutator<Ruby>,
+    mutator: *mut RubyMutator,
     size: usize,
     align: usize,
     offset: isize,
@@ -93,7 +101,7 @@ pub extern "C" fn mmtk_alloc(
 
 #[no_mangle]
 pub extern "C" fn mmtk_post_alloc(
-    mutator: *mut Mutator<Ruby>,
+    mutator: *mut RubyMutator,
     refer: ObjectReference,
     bytes: usize,
     semantics: AllocationSemantics,
@@ -109,14 +117,14 @@ pub extern "C" fn mmtk_will_never_move(object: ObjectReference) -> bool {
 #[no_mangle]
 pub extern "C" fn mmtk_start_control_collector(
     tls: VMWorkerThread,
-    controller: *mut GCController<Ruby>,
+    controller: *mut RubyGCController,
 ) {
     let mut controller = unsafe { Box::from_raw(controller) };
     memory_manager::start_control_collector(mmtk(), tls, &mut controller);
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_start_worker(tls: VMWorkerThread, worker: *mut GCWorker<Ruby>) {
+pub extern "C" fn mmtk_start_worker(tls: VMWorkerThread, worker: *mut RubyGCWorker) {
     let mut worker = unsafe { Box::from_raw(worker) };
     memory_manager::start_worker::<Ruby>(mmtk(), tls, &mut worker)
 }

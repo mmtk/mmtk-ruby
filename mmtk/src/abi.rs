@@ -1,16 +1,20 @@
+use crate::api::RubyMutator;
 use crate::{upcalls, Ruby};
 use mmtk::scheduler::{GCController, GCWorker};
 use mmtk::util::{ObjectReference, VMMutatorThread, VMWorkerThread};
-use mmtk::Mutator;
+
+// For the C binding
+pub const OBJREF_OFFSET: usize = 8;
+pub const MIN_OBJ_ALIGN: usize = 8; // Even on 32-bit machine.  A Ruby object is at least 40 bytes large.
 
 pub const GC_THREAD_KIND_CONTROLLER: libc::c_int = 0;
 pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
 #[repr(C)]
 pub struct ObjectClosure {
-    /// The function to be called from C.  Must match the signature of `ObjectClosure::c_function`
+    /// The function to be called from C.
     pub c_function:
-        *const fn(*mut libc::c_void, *mut libc::c_void, ObjectReference) -> ObjectReference,
+        extern "C" fn(*mut libc::c_void, *mut libc::c_void, ObjectReference) -> ObjectReference,
     /// The pointer to the Rust-level closure object.
     pub rust_closure: *mut libc::c_void,
 }
@@ -47,10 +51,10 @@ impl ObjectClosure {
         F2: 'env + FnOnce() -> T,
     {
         debug_assert!(
-            self.c_function == Self::c_function_unregistered as *const _,
+            self.c_function == Self::c_function_unregistered,
             "set_temporarily_and_run_code is recursively called."
         );
-        self.c_function = Self::c_function_registered::<F1> as *const _;
+        self.c_function = Self::c_function_registered::<F1>;
         self.rust_closure = &mut visit_object as *mut F1 as *mut libc::c_void;
         let result = f();
         *self = Default::default();
@@ -200,7 +204,7 @@ pub struct RubyUpcalls {
     pub block_for_gc: extern "C" fn(tls: VMMutatorThread),
     pub number_of_mutators: extern "C" fn() -> usize,
     pub reset_mutator_iterator: extern "C" fn(),
-    pub get_next_mutator: extern "C" fn() -> *mut Mutator<Ruby>,
+    pub get_next_mutator: extern "C" fn() -> *mut RubyMutator,
     pub scan_vm_specific_roots: extern "C" fn(),
     pub scan_thread_roots: extern "C" fn(),
     pub scan_thread_root: extern "C" fn(mutator_tls: VMMutatorThread, worker_tls: VMWorkerThread),
