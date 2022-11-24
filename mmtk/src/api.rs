@@ -10,20 +10,15 @@ use crate::mmtk;
 use crate::Ruby;
 use mmtk::memory_manager;
 use mmtk::memory_manager::mmtk_init;
-use mmtk::scheduler::{GCController, GCWorker};
 use mmtk::util::constants::MIN_OBJECT_SIZE;
 use mmtk::util::options::PlanSelector;
 use mmtk::util::{Address, ObjectReference};
-use mmtk::util::{VMMutatorThread, VMThread, VMWorkerThread};
+use mmtk::util::{VMMutatorThread, VMThread};
 use mmtk::AllocationSemantics;
 use mmtk::MMTKBuilder;
 use mmtk::Mutator;
 
 // For cbindgen to generate simple type names.
-/// cbindgen:ignore
-pub type RubyGCWorker = GCWorker<Ruby>;
-/// cbindgen:ignore
-pub type RubyGCController = GCController<Ruby>;
 /// cbindgen:ignore
 pub type RubyMutator = Mutator<Ruby>;
 
@@ -112,21 +107,6 @@ pub extern "C" fn mmtk_post_alloc(
 #[no_mangle]
 pub extern "C" fn mmtk_will_never_move(object: ObjectReference) -> bool {
     !object.is_movable()
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_start_control_collector(
-    tls: VMWorkerThread,
-    controller: *mut RubyGCController,
-) {
-    let mut controller = unsafe { Box::from_raw(controller) };
-    memory_manager::start_control_collector(mmtk(), tls, &mut controller);
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_start_worker(tls: VMWorkerThread, worker: *mut RubyGCWorker) {
-    let mut worker = unsafe { Box::from_raw(worker) };
-    memory_manager::start_worker::<Ruby>(mmtk(), tls, &mut worker)
 }
 
 #[no_mangle]
