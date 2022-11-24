@@ -4,12 +4,14 @@ use std::sync::Mutex;
 use mmtk::MMTK;
 
 use crate::abi;
+use crate::weak_proc::WeakProcessor;
 use crate::Ruby;
 
 pub struct RubyBinding {
     pub mmtk: &'static MMTK<Ruby>,
     pub upcalls: *const abi::RubyUpcalls,
     pub plan_name: Mutex<Option<CString>>,
+    pub weak_proc: WeakProcessor,
 }
 
 unsafe impl Sync for RubyBinding {}
@@ -21,6 +23,7 @@ impl RubyBinding {
             mmtk,
             upcalls,
             plan_name: Mutex::new(None),
+            weak_proc: WeakProcessor::new(),
         }
     }
 

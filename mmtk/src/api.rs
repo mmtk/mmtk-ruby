@@ -5,6 +5,7 @@ use std::ffi::CStr;
 
 use crate::abi;
 use crate::abi::RawVecOfObjRef;
+use crate::binding;
 use crate::binding::RubyBinding;
 use crate::mmtk;
 use crate::Ruby;
@@ -162,21 +163,6 @@ pub extern "C" fn mmtk_handle_user_collection_request(tls: VMMutatorThread) {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_add_weak_candidate(reff: ObjectReference) {
-    memory_manager::add_weak_candidate(mmtk(), reff)
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_add_soft_candidate(reff: ObjectReference) {
-    memory_manager::add_soft_candidate(mmtk(), reff)
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_add_phantom_candidate(reff: ObjectReference) {
-    memory_manager::add_phantom_candidate(mmtk(), reff)
-}
-
-#[no_mangle]
 pub extern "C" fn mmtk_harness_begin(tls: VMMutatorThread) {
     memory_manager::harness_begin(mmtk(), tls)
 }
@@ -197,18 +183,14 @@ pub extern "C" fn mmtk_last_heap_address() -> Address {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_add_finalizer(reff: ObjectReference) {
-    memory_manager::add_finalizer(crate::mmtk(), reff)
+pub extern "C" fn mmtk_add_obj_free_candidate(object: ObjectReference) {
+    binding().weak_proc.add_obj_free_candidate(object)
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_get_finalized_object() -> ObjectReference {
-    memory_manager::get_finalized_object(crate::mmtk()).unwrap_or(ObjectReference::NULL)
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_get_all_finalizers() -> RawVecOfObjRef {
-    memory_manager::get_all_finalizers(crate::mmtk()).into()
+pub extern "C" fn mmtk_get_all_obj_free_candidates() -> RawVecOfObjRef {
+    let vec = binding().weak_proc.get_all_obj_free_candidates();
+    RawVecOfObjRef::from_vec(vec)
 }
 
 #[no_mangle]
