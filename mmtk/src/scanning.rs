@@ -1,8 +1,9 @@
 use crate::abi::GCThreadTLS;
 
+use crate::object_model::VMObjectModel;
 use crate::{upcalls, Ruby, RubyEdge};
 use mmtk::util::{ObjectReference, VMWorkerThread};
-use mmtk::vm::{EdgeVisitor, ObjectTracer, RootsWorkFactory, Scanning};
+use mmtk::vm::{EdgeVisitor, ObjectModel, ObjectTracer, RootsWorkFactory, Scanning};
 use mmtk::{Mutator, MutatorContext};
 
 pub struct VMScanning {}
@@ -31,7 +32,7 @@ impl Scanning<Ruby> for VMScanning {
         let visit_object = |_worker, target_object: ObjectReference| {
             trace!("Tracing object: {} -> {}", object, target_object);
             debug_assert!(mmtk::memory_manager::is_mmtk_object(
-                target_object.to_address()
+                VMObjectModel::ref_to_address(target_object)
             ));
             object_tracer.trace_object(target_object)
         };

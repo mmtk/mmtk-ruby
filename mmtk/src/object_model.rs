@@ -43,7 +43,7 @@ impl ObjectModel<Ruby> for VMObjectModel {
 
     fn get_current_size(object: ObjectReference) -> usize {
         // Currently, a hidden size field of word size is placed before each object.
-        let start = Self::object_start_ref(object);
+        let start = Self::ref_to_object_start(object);
         unsafe { start.load::<usize>() }
     }
 
@@ -51,20 +51,24 @@ impl ObjectModel<Ruby> for VMObjectModel {
         todo!()
     }
 
-    fn object_start_ref(object: ObjectReference) -> Address {
-        object.to_address() - Self::OBJREF_OFFSET
-    }
-
     fn ref_to_address(object: ObjectReference) -> Address {
-        object.to_address() - Self::OBJREF_OFFSET
+        object.to_raw_address()
     }
 
-    fn dump_object(_object: ObjectReference) {
-        todo!()
+    fn ref_to_object_start(object: ObjectReference) -> Address {
+        object.to_raw_address() - Self::OBJREF_OFFSET
     }
 
-    fn get_size_when_copied(_object: ObjectReference) -> usize {
-        todo!()
+    fn ref_to_header(object: ObjectReference) -> Address {
+        object.to_raw_address()
+    }
+
+    fn address_to_ref(addr: Address) -> ObjectReference {
+        ObjectReference::from_raw_address(addr)
+    }
+
+    fn get_size_when_copied(object: ObjectReference) -> usize {
+        Self::get_current_size(object)
     }
 
     fn get_align_when_copied(_object: ObjectReference) -> usize {
@@ -72,6 +76,10 @@ impl ObjectModel<Ruby> for VMObjectModel {
     }
 
     fn get_align_offset_when_copied(_object: ObjectReference) -> isize {
+        todo!()
+    }
+
+    fn dump_object(_object: ObjectReference) {
         todo!()
     }
 }
