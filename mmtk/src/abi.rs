@@ -217,6 +217,7 @@ pub struct RubyUpcalls {
     pub scan_thread_root: extern "C" fn(mutator_tls: VMMutatorThread, worker_tls: VMWorkerThread),
     pub scan_object_ruby_style: extern "C" fn(object: ObjectReference),
     pub call_obj_free: extern "C" fn(object: ObjectReference),
+    pub update_global_weak_tables: extern "C" fn(),
 }
 
 unsafe impl Sync for RubyUpcalls {}

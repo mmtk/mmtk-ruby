@@ -141,6 +141,11 @@ pub extern "C" fn mmtk_total_bytes() -> usize {
 }
 
 #[no_mangle]
+pub extern "C" fn mmtk_is_reachable(object: ObjectReference) -> bool {
+    object.is_reachable()
+}
+
+#[no_mangle]
 pub extern "C" fn mmtk_is_live_object(object: ObjectReference) -> bool {
     memory_manager::is_live_object(object)
 }

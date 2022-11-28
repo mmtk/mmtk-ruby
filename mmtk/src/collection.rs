@@ -74,8 +74,8 @@ impl Collection<Ruby> for VMCollection {
         // do nothing
     }
 
-    fn process_weak_refs(_tls: VMWorkerThread, context: impl ProcessWeakRefsContext) -> bool {
-        binding().weak_proc.process_weak_stuff(context);
+    fn process_weak_refs(tls: VMWorkerThread, context: impl ProcessWeakRefsContext) -> bool {
+        binding().weak_proc.process_weak_stuff(tls, context);
         false
     }
 }

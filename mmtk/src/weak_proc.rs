@@ -1,8 +1,11 @@
 use std::sync::Mutex;
 
-use mmtk::{util::ObjectReference, vm::ProcessWeakRefsContext};
+use mmtk::{
+    util::{ObjectReference, VMWorkerThread},
+    vm::{ObjectModel, ProcessWeakRefsContext},
+};
 
-use crate::upcalls;
+use crate::{abi::GCThreadTLS, object_model::VMObjectModel, upcalls};
 
 pub struct WeakProcessor {
     /// Objects that needs `obj_free` called when dying.
@@ -37,7 +40,13 @@ impl WeakProcessor {
         std::mem::take(obj_free_candidates.as_mut())
     }
 
-    pub fn process_weak_stuff(&self, context: impl ProcessWeakRefsContext) {
+    pub fn process_weak_stuff(
+        &self,
+        tls: VMWorkerThread,
+        mut context: impl ProcessWeakRefsContext,
+    ) {
+        let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
+
         if context.forwarding() {
             panic!("We can't use MarkCompact in Ruby.");
         }
@@ -59,5 +68,22 @@ impl WeakProcessor {
         }
 
         *obj_free_candidates = new_candidates;
+
+        let forward_object = |_worker, object: ObjectReference| {
+            debug_assert!(mmtk::memory_manager::is_mmtk_object(
+                VMObjectModel::ref_to_address(object)
+            ));
+            let result = context.trace_object(object);
+            trace!("Forwarding reference: {} -> {}", object, result);
+            result
+        };
+
+        gc_tls
+            .object_closure
+            .set_temporarily_and_run_code(forward_object, || {
+                log::debug!("Updating global weak tables...");
+                (upcalls().update_global_weak_tables)();
+                log::debug!("Finished updating global weak tables.");
+            });
     }
 }
