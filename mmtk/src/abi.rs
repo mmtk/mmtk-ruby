@@ -203,6 +203,13 @@ impl From<Vec<ObjectReference>> for RawVecOfObjRef {
 
 #[repr(C)]
 #[derive(Clone)]
+pub struct RubyBindingOptions {
+    pub ractor_check_mode: bool,
+    pub suffix_size: usize,
+}
+
+#[repr(C)]
+#[derive(Clone)]
 pub struct RubyUpcalls {
     pub init_gc_worker_thread: extern "C" fn(gc_worker_tls: *mut GCThreadTLS),
     pub get_gc_thread_tls: extern "C" fn() -> *mut GCThreadTLS,

@@ -25,6 +25,9 @@ impl ObjectModel<Ruby> for VMObjectModel {
     const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec =
         VMLocalLOSMarkNurserySpec::side_after(Self::LOCAL_MARK_BIT_SPEC.as_spec());
 
+    const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = false;
+    const OBJECT_REF_OFFSET_LOWER_BOUND: isize = Self::OBJREF_OFFSET as isize;
+
     fn copy(
         _from: ObjectReference,
         _semantics: CopySemantics,
@@ -43,8 +46,15 @@ impl ObjectModel<Ruby> for VMObjectModel {
 
     fn get_current_size(object: ObjectReference) -> usize {
         // Currently, a hidden size field of word size is placed before each object.
+        let prefix_size = abi::OBJREF_OFFSET;
+
+        // That hidden field holds the payload size.
         let start = Self::ref_to_object_start(object);
-        unsafe { start.load::<usize>() }
+        let payload_size = unsafe { start.load::<usize>() };
+
+        // In RACTOR_CHECK_MODE, Ruby hides a field after each object to hold the Ractor ID.
+        let suffix_size = unsafe { crate::BINDING_FAST.suffix_size };
+        prefix_size + payload_size + suffix_size
     }
 
     fn get_type_descriptor(_reference: ObjectReference) -> &'static [i8] {

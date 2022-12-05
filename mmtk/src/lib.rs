@@ -4,7 +4,7 @@ extern crate mmtk;
 extern crate log;
 
 use abi::RubyUpcalls;
-use binding::RubyBinding;
+use binding::{RubyBinding, RubyBindingFast};
 use mmtk::vm::edge_shape::{SimpleEdge, UnimplementedMemorySlice};
 use mmtk::vm::VMBinding;
 use mmtk::MMTK;
@@ -44,7 +44,12 @@ impl VMBinding for Ruby {
     type VMMemorySlice = RubyMemorySlice;
 }
 
+/// The singleton object for the Ruby binding itself.
 pub static BINDING: OnceCell<RubyBinding> = OnceCell::new();
+
+/// Some data needs to be accessed fast.
+/// We sacrifice safety for speed using unsynchronized global variables.
+pub static mut BINDING_FAST: RubyBindingFast = RubyBindingFast::new();
 
 pub fn binding<'b>() -> &'b RubyBinding {
     BINDING

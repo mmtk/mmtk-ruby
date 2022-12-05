@@ -5,10 +5,23 @@ use mmtk::MMTK;
 
 use crate::abi;
 use crate::weak_proc::WeakProcessor;
+use crate::abi::RubyBindingOptions;
 use crate::Ruby;
+
+#[derive(Default)]
+pub struct RubyBindingFast {
+    pub suffix_size: usize,
+}
+
+impl RubyBindingFast {
+    pub const fn new() -> Self {
+        Self { suffix_size: 0 }
+    }
+}
 
 pub struct RubyBinding {
     pub mmtk: &'static MMTK<Ruby>,
+    pub options: RubyBindingOptions,
     pub upcalls: *const abi::RubyUpcalls,
     pub plan_name: Mutex<Option<CString>>,
     pub weak_proc: WeakProcessor,
@@ -18,17 +31,21 @@ unsafe impl Sync for RubyBinding {}
 unsafe impl Send for RubyBinding {}
 
 impl RubyBinding {
-    pub fn new(mmtk: &'static MMTK<Ruby>, upcalls: *const abi::RubyUpcalls) -> Self {
+    pub fn new(
+        mmtk: &'static MMTK<Ruby>,
+        binding_options: &RubyBindingOptions,
+        upcalls: *const abi::RubyUpcalls,
+    ) -> Self {
+        unsafe {
+            crate::BINDING_FAST.suffix_size = binding_options.suffix_size;
+        }
         Self {
             mmtk,
+            options: binding_options.clone(),
             upcalls,
             plan_name: Mutex::new(None),
             weak_proc: WeakProcessor::new(),
         }
-    }
-
-    pub fn register_upcalls(&mut self, upcalls: *const abi::RubyUpcalls) {
-        self.upcalls = upcalls;
     }
 
     pub fn upcalls(&self) -> &'static abi::RubyUpcalls {
