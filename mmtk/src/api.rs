@@ -5,6 +5,7 @@ use std::ffi::CStr;
 
 use crate::abi;
 use crate::abi::RawVecOfObjRef;
+use crate::abi::RubyBindingOptions;
 use crate::binding::RubyBinding;
 use crate::mmtk;
 use crate::Ruby;
@@ -54,12 +55,17 @@ pub extern "C" fn mmtk_builder_set_plan(builder: *mut MMTKBuilder, plan_name: *c
 ///     the MMTk instance.
 /// -   `upcalls` points to the struct that contains upcalls.  It is allocated in C as static.
 #[no_mangle]
-pub extern "C" fn mmtk_init_binding(builder: *mut MMTKBuilder, upcalls: *const abi::RubyUpcalls) {
+pub extern "C" fn mmtk_init_binding(
+    builder: *mut MMTKBuilder,
+    binding_options: *const RubyBindingOptions,
+    upcalls: *const abi::RubyUpcalls,
+) {
     let builder = unsafe { Box::from_raw(builder) };
+    let binding_options = unsafe { &*binding_options };
     let mmtk_boxed = mmtk_init(&builder);
     let mmtk_static = Box::leak(Box::new(mmtk_boxed));
 
-    let binding = RubyBinding::new(mmtk_static, upcalls);
+    let binding = RubyBinding::new(mmtk_static, binding_options, upcalls);
 
     crate::BINDING
         .set(binding)

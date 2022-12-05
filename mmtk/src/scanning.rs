@@ -1,9 +1,8 @@
 use crate::abi::GCThreadTLS;
 
-use crate::object_model::VMObjectModel;
 use crate::{upcalls, Ruby, RubyEdge};
 use mmtk::util::{ObjectReference, VMWorkerThread};
-use mmtk::vm::{EdgeVisitor, ObjectModel, ObjectTracer, RootsWorkFactory, Scanning};
+use mmtk::vm::{EdgeVisitor, ObjectTracer, RootsWorkFactory, Scanning};
 use mmtk::{Mutator, MutatorContext};
 
 pub struct VMScanning {}
@@ -28,12 +27,20 @@ impl Scanning<Ruby> for VMScanning {
         object: ObjectReference,
         object_tracer: &mut OT,
     ) {
+        debug_assert!(
+            mmtk::memory_manager::is_mmtk_object(object.to_raw_address()),
+            "Not an MMTk object: {}",
+            object,
+        );
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
         let visit_object = |_worker, target_object: ObjectReference| {
             trace!("Tracing object: {} -> {}", object, target_object);
-            debug_assert!(mmtk::memory_manager::is_mmtk_object(
-                VMObjectModel::ref_to_address(target_object)
-            ));
+            debug_assert!(
+                mmtk::memory_manager::is_mmtk_object(target_object.to_raw_address()),
+                "Destination is not an MMTk object. Src: {} dst: {}",
+                object,
+                target_object
+            );
             object_tracer.trace_object(target_object)
         };
         gc_tls
