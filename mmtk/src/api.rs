@@ -73,7 +73,8 @@ pub extern "C" fn mmtk_bind_mutator(tls: VMMutatorThread) -> *mut RubyMutator {
 
 #[no_mangle]
 pub extern "C" fn mmtk_destroy_mutator(mutator: *mut RubyMutator) {
-    memory_manager::destroy_mutator(unsafe { Box::from_raw(mutator) })
+    let mut boxed_mutator = unsafe { Box::from_raw(mutator) };
+    memory_manager::destroy_mutator(boxed_mutator.as_mut())
 }
 
 #[no_mangle]

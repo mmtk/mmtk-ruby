@@ -25,6 +25,9 @@ impl ObjectModel<Ruby> for VMObjectModel {
     const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec =
         VMLocalLOSMarkNurserySpec::side_after(Self::LOCAL_MARK_BIT_SPEC.as_spec());
 
+    const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = false;
+    const OBJECT_REF_OFFSET_LOWER_BOUND: isize = Self::OBJREF_OFFSET as isize;
+
     fn copy(
         _from: ObjectReference,
         _semantics: CopySemantics,
