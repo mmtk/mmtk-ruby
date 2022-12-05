@@ -26,7 +26,7 @@ env_logger = "0.9.0"
 once_cell = "1.13.0"
 
 [dependencies.mmtk]
-features = ["is_mmtk_object", "immix_no_defrag", "immix_no_defrag", "malloc_mark_sweep"]
+features = ["is_mmtk_object", "immix_no_defrag", "immix_no_defrag"]
 
 # Uncomment one of the following lines to choose where to find mmtk-core.
 git = "https://github.com/mmtk/mmtk-core.git"  # Use mmtk-core from the official repository.
