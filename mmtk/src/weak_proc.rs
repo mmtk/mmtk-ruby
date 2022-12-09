@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use mmtk::{
     util::{ObjectReference, VMWorkerThread},
-    vm::{ObjectModel, ProcessWeakRefsContext},
+    vm::{ObjectModel, ProcessWeakRefsContext, ProcessWeakRefsTracer},
 };
 
 use crate::{abi::GCThreadTLS, object_model::VMObjectModel, upcalls};
@@ -43,11 +43,12 @@ impl WeakProcessor {
     pub fn process_weak_stuff(
         &self,
         tls: VMWorkerThread,
-        mut context: impl ProcessWeakRefsContext,
+        context: ProcessWeakRefsContext,
+        mut tracer: impl ProcessWeakRefsTracer,
     ) {
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
 
-        if context.forwarding() {
+        if context.forwarding {
             panic!("We can't use MarkCompact in Ruby.");
         }
 
@@ -73,7 +74,7 @@ impl WeakProcessor {
             debug_assert!(mmtk::memory_manager::is_mmtk_object(
                 VMObjectModel::ref_to_address(object)
             ));
-            let result = context.trace_object(object);
+            let result = tracer.trace_object(object);
             trace!("Forwarding reference: {} -> {}", object, result);
             result
         };

@@ -3,7 +3,7 @@ use crate::abi::GCThreadTLS;
 use crate::{binding, mmtk, upcalls, Ruby};
 use mmtk::scheduler::*;
 use mmtk::util::{VMMutatorThread, VMThread, VMWorkerThread};
-use mmtk::vm::{Collection, GCThreadContext, ProcessWeakRefsContext};
+use mmtk::vm::{Collection, GCThreadContext, ProcessWeakRefsContext, ProcessWeakRefsTracer};
 use mmtk::{memory_manager, MutatorContext};
 use std::thread;
 
@@ -74,8 +74,12 @@ impl Collection<Ruby> for VMCollection {
         // do nothing
     }
 
-    fn process_weak_refs(tls: VMWorkerThread, context: impl ProcessWeakRefsContext) -> bool {
-        binding().weak_proc.process_weak_stuff(tls, context);
+    fn process_weak_refs(
+        tls: VMWorkerThread,
+        context: ProcessWeakRefsContext,
+        tracer: impl ProcessWeakRefsTracer,
+    ) -> bool {
+        binding().weak_proc.process_weak_stuff(tls, context, tracer);
         false
     }
 }
