@@ -4,8 +4,8 @@ use std::sync::Mutex;
 use mmtk::MMTK;
 
 use crate::abi;
-use crate::weak_proc::WeakProcessor;
 use crate::abi::RubyBindingOptions;
+use crate::weak_proc::WeakProcessor;
 use crate::Ruby;
 
 #[derive(Default)]

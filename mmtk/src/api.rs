@@ -5,8 +5,8 @@ use std::ffi::CStr;
 
 use crate::abi;
 use crate::abi::RawVecOfObjRef;
-use crate::binding;
 use crate::abi::RubyBindingOptions;
+use crate::binding;
 use crate::binding::RubyBinding;
 use crate::mmtk;
 use crate::Ruby;
