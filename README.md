@@ -49,21 +49,15 @@ cd ruby
 ./configure --with-mmtk-ruby=../mmtk-ruby --prefix=$PWD/build
 ```
 
-Build a `miniruby` executable.  We need to set some environment variables
-first.
-
-```bash
-export MMTK_PLAN=MarkSweep                  # Set the GC algorithm to MarkSweep
-export THIRD_PARTY_HEAP_LIMIT=500000000     # 500M should be enough. If still out of memory, add more.
-
-make miniruby -j
-```
-
 The `miniruby` executable should be able to execute simple Ruby programs.  You
 can try the following command:
 
 ```bash
+# Run with vanilla Ruby GC
 ./miniruby -e 'puts "Hello world!"'
+
+# Run with MMTk GC
+./miniruby --mmtk --mmtk-plan=MarkSweep -e 'puts "Hello world!"'
 ```
 
 You can continue to build the full Ruby and install it with
@@ -108,6 +102,21 @@ The following is an example of configuring for debugging.
 Also note that you can use the release build of `mmtk-ruby` with a debug build
 of `ruby` (with `optflags='-O0'` but without `--with-mmtk-ruby-debug`) and vice
 versa (with `--with-mmtk-ruby-debug` and `optflags='-O1'` or higher).
+
+## Adjusting heap size
+
+By default, MMTk dynamically adjust the heap size (i.e. when to trigger the
+next GC) between 1MiB and 80% of the physical memory, depending on the heap
+utility after the previous GC.  It is convenient for production settings.
+However, when doing experiments, you may want to set the heap size to a fixed
+value so the GC behaviour becomes more deterministic.  You can do it in two
+ways:
+
+1.  Using the `--mmtk-max-heap` command line option.
+2.  Using the `THIRD_PARTY_HEAP_LIMIT` environment variable.
+
+Both of them accept IEC suffixes "KiB", "MiB", "GiB" and "TiB".  Therefore,
+"16777216" and "16MiB" are equivalent.
 
 ## Test
 
