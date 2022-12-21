@@ -1,6 +1,7 @@
 use crate::abi::GCThreadTLS;
 
 use crate::{upcalls, Ruby, RubyEdge};
+use mmtk::scheduler::GCWorker;
 use mmtk::util::{ObjectReference, VMWorkerThread};
 use mmtk::vm::{EdgeVisitor, ObjectTracer, RootsWorkFactory, Scanning};
 use mmtk::{Mutator, MutatorContext};
@@ -82,6 +83,23 @@ impl Scanning<Ruby> for VMScanning {
 
     fn prepare_for_roots_re_scanning() {
         todo!()
+    }
+
+    fn process_weak_refs(
+        worker: &mut GCWorker<Ruby>,
+        tracer_context: impl mmtk::vm::ObjectTracerContext<Ruby>,
+    ) -> bool {
+        crate::binding()
+            .weak_proc
+            .process_weak_stuff(worker, tracer_context);
+        false
+    }
+
+    fn forward_weak_refs(
+        _worker: &mut GCWorker<Ruby>,
+        _tracer_context: impl mmtk::vm::ObjectTracerContext<Ruby>,
+    ) {
+        panic!("We can't use MarkCompact in Ruby.");
     }
 }
 

@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use mmtk::{
     scheduler::GCWorker,
     util::ObjectReference,
-    vm::{ObjectModel, ObjectTracer, ProcessWeakRefsContext},
+    vm::{ObjectModel, ObjectTracer, ObjectTracerContext},
 };
 
 use crate::{abi::GCThreadTLS, object_model::VMObjectModel, upcalls, Ruby};
@@ -44,13 +44,8 @@ impl WeakProcessor {
     pub fn process_weak_stuff(
         &self,
         worker: &mut GCWorker<Ruby>,
-        context: ProcessWeakRefsContext,
-        tracer_factory: impl mmtk::vm::QueuingTracerFactory<Ruby>,
+        tracer_context: impl ObjectTracerContext<Ruby>,
     ) {
-        if context.forwarding {
-            panic!("We can't use MarkCompact in Ruby.");
-        }
-
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(worker.tls) };
 
         // If it blocks, it is a bug.
@@ -60,7 +55,7 @@ impl WeakProcessor {
             .expect("It's GC time.  No mutators should hold this lock at this time.");
 
         // Enable tracer in this scope.
-        tracer_factory.with_queuing_tracer(worker, |tracer| {
+        tracer_context.with_tracer(worker, |tracer| {
             // Process obj_free
             let mut new_candidates = Vec::new();
 
