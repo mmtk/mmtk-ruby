@@ -13,6 +13,7 @@ use crate::Ruby;
 use mmtk::memory_manager;
 use mmtk::memory_manager::mmtk_init;
 use mmtk::util::constants::MIN_OBJECT_SIZE;
+use mmtk::util::options::GCTriggerSelector;
 use mmtk::util::options::PlanSelector;
 use mmtk::util::{Address, ObjectReference};
 use mmtk::util::{VMMutatorThread, VMThread};
@@ -31,11 +32,28 @@ pub extern "C" fn mmtk_builder_default() -> *mut MMTKBuilder {
     Box::into_raw(Box::new(MMTKBuilder::default()))
 }
 
-/// Set the `heap_size` option.
+/// Set the GC trigger to dynamically adjust heap size.
 #[no_mangle]
-pub extern "C" fn mmtk_builder_set_heap_size(builder: *mut MMTKBuilder, heap_size: usize) {
+pub extern "C" fn mmtk_builder_set_dynamic_heap_size(
+    builder: *mut MMTKBuilder,
+    low: usize,
+    high: usize,
+) {
     let builder = unsafe { &mut *builder };
-    builder.options.heap_size.set(heap_size);
+    builder
+        .options
+        .gc_trigger
+        .set(GCTriggerSelector::DynamicHeapSize(low, high));
+}
+
+/// Set the GC trigger to use a fixed heap size.
+#[no_mangle]
+pub extern "C" fn mmtk_builder_set_fixed_heap_size(builder: *mut MMTKBuilder, heap_size: usize) {
+    let builder = unsafe { &mut *builder };
+    builder
+        .options
+        .gc_trigger
+        .set(GCTriggerSelector::FixedHeapSize(heap_size));
 }
 
 /// Set the plan.  `plan_name` is a case-sensitive C-style ('\0'-terminated) string matching
