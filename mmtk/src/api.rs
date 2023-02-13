@@ -176,6 +176,11 @@ pub extern "C" fn mmtk_is_live_object(object: ObjectReference) -> bool {
 }
 
 #[no_mangle]
+pub extern "C" fn mmtk_get_forwarded_object(object: ObjectReference) -> ObjectReference {
+    object.get_forwarded_object().unwrap_or(ObjectReference::NULL)
+}
+
+#[no_mangle]
 pub extern "C" fn mmtk_is_mmtk_object(addr: Address) -> bool {
     debug_assert!(!addr.is_zero());
     debug_assert!(addr.is_aligned_to(mmtk::util::is_mmtk_object::ALLOC_BIT_REGION_SIZE));
