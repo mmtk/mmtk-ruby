@@ -166,7 +166,7 @@ impl GCThreadTLS {
         Self::check_cast(ptr)
     }
 
-    pub fn worker<'s, 'w>(&'s mut self) -> &'w mut GCWorker<Ruby> {
+    pub fn worker<'w>(&mut self) -> &'w mut GCWorker<Ruby> {
         // NOTE: The returned ref points to the worker which does not have the same lifetime as self.
         assert!(self.kind == GC_THREAD_KIND_WORKER);
         unsafe { &mut *(self.gc_context as *mut GCWorker<Ruby>) }

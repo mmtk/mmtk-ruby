@@ -57,7 +57,7 @@ impl RubyBinding {
         if plan_name.is_none() {
             let name_string = format!("{:?}", *self.mmtk.get_options().plan);
             let c_string = CString::new(name_string)
-                .unwrap_or_else(|e| panic!("Failed converting plan name to CString: {}", e));
+                .unwrap_or_else(|e| panic!("Failed converting plan name to CString: {e}"));
             *plan_name = Some(c_string);
         }
         plan_name.as_deref().unwrap().as_ptr()

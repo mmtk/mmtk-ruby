@@ -30,17 +30,14 @@ impl Scanning<Ruby> for VMScanning {
     ) {
         debug_assert!(
             mmtk::memory_manager::is_mmtk_object(object.to_raw_address()),
-            "Not an MMTk object: {}",
-            object,
+            "Not an MMTk object: {object}",
         );
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
         let visit_object = |_worker, target_object: ObjectReference, _pin| {
             trace!("Tracing object: {} -> {}", object, target_object);
             debug_assert!(
                 mmtk::memory_manager::is_mmtk_object(target_object.to_raw_address()),
-                "Destination is not an MMTk object. Src: {} dst: {}",
-                object,
-                target_object
+                "Destination is not an MMTk object. Src: {object} dst: {target_object}"
             );
             object_tracer.trace_object(target_object)
         };
