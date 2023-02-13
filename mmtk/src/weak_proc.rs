@@ -77,7 +77,7 @@ impl WeakProcessor {
             *obj_free_candidates = new_candidates;
 
             // Forward global weak tables
-            let forward_object = |_worker, object: ObjectReference| {
+            let forward_object = |_worker, object: ObjectReference, _pin| {
                 debug_assert!(mmtk::memory_manager::is_mmtk_object(
                     VMObjectModel::ref_to_address(object)
                 ));

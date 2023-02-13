@@ -34,7 +34,7 @@ impl Scanning<Ruby> for VMScanning {
             object,
         );
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
-        let visit_object = |_worker, target_object: ObjectReference| {
+        let visit_object = |_worker, target_object: ObjectReference, _pin| {
             trace!("Tracing object: {} -> {}", object, target_object);
             debug_assert!(
                 mmtk::memory_manager::is_mmtk_object(target_object.to_raw_address()),
@@ -113,7 +113,7 @@ impl VMScanning {
         callback: F,
     ) {
         let mut buffer: Vec<ObjectReference> = Vec::new();
-        let visit_object = |_, object: ObjectReference| {
+        let visit_object = |_, object: ObjectReference, _pin| {
             debug!("[{}] Scanning object: {}", root_scan_kind, object);
             buffer.push(object);
             if buffer.len() >= Self::OBJECT_BUFFER_SIZE {

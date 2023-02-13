@@ -177,7 +177,9 @@ pub extern "C" fn mmtk_is_live_object(object: ObjectReference) -> bool {
 
 #[no_mangle]
 pub extern "C" fn mmtk_get_forwarded_object(object: ObjectReference) -> ObjectReference {
-    object.get_forwarded_object().unwrap_or(ObjectReference::NULL)
+    object
+        .get_forwarded_object()
+        .unwrap_or(ObjectReference::NULL)
 }
 
 #[no_mangle]

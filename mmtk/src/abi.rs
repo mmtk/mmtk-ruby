@@ -11,7 +11,8 @@ pub const GC_THREAD_KIND_CONTROLLER: libc::c_int = 0;
 pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
 type ObjectClosureFunction =
-    extern "C" fn(*mut libc::c_void, *mut libc::c_void, ObjectReference) -> ObjectReference;
+    extern "C" fn(*mut libc::c_void, *mut libc::c_void, ObjectReference, bool) -> ObjectReference;
+
 #[repr(C)]
 pub struct ObjectClosure {
     /// The function to be called from C.
@@ -54,7 +55,7 @@ impl ObjectClosure {
         f: F2,
     ) -> T
     where
-        F1: 'env + FnMut(&'static mut GCWorker<Ruby>, ObjectReference) -> ObjectReference,
+        F1: 'env + FnMut(&'static mut GCWorker<Ruby>, ObjectReference, bool) -> ObjectReference,
         F2: 'env + FnOnce() -> T,
     {
         debug_assert!(
@@ -72,24 +73,26 @@ impl ObjectClosure {
         rust_closure: *mut libc::c_void,
         worker: *mut libc::c_void,
         object: ObjectReference,
+        pin: bool,
     ) -> ObjectReference
     where
-        F: FnMut(&'static mut GCWorker<Ruby>, ObjectReference) -> ObjectReference,
+        F: FnMut(&'static mut GCWorker<Ruby>, ObjectReference, bool) -> ObjectReference,
     {
         let rust_closure = unsafe { &mut *(rust_closure as *mut F) };
         let worker = unsafe { &mut *(worker as *mut GCWorker<Ruby>) };
-        rust_closure(worker, object)
+        rust_closure(worker, object, pin)
     }
 
     extern "C" fn c_function_unregistered(
         _rust_closure: *mut libc::c_void,
         worker: *mut libc::c_void,
         object: ObjectReference,
+        pin: bool,
     ) -> ObjectReference {
         let worker = unsafe { &mut *(worker as *mut GCWorker<Ruby>) };
         panic!(
-            "object_closure is not set.  worker ordinal: {}, object: {}",
-            worker.ordinal, object
+            "object_closure is not set.  worker ordinal: {}, object: {}, pin: {}",
+            worker.ordinal, object, pin
         );
     }
 }
