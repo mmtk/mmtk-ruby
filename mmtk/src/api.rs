@@ -79,6 +79,8 @@ pub extern "C" fn mmtk_init_binding(
     binding_options: *const RubyBindingOptions,
     upcalls: *const abi::RubyUpcalls,
 ) {
+    crate::set_panic_hook();
+
     let builder = unsafe { Box::from_raw(builder) };
     let binding_options = unsafe { &*binding_options };
     let mmtk_boxed = mmtk_init(&builder);

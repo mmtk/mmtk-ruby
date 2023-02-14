@@ -3,6 +3,11 @@ extern crate mmtk;
 #[macro_use]
 extern crate log;
 
+use std::collections::HashSet;
+use std::panic::PanicInfo;
+use std::sync::Mutex;
+use std::thread::ThreadId;
+
 use abi::RubyUpcalls;
 use binding::{RubyBinding, RubyBindingFast};
 use mmtk::vm::edge_shape::{SimpleEdge, UnimplementedMemorySlice};
@@ -64,4 +69,61 @@ pub fn mmtk() -> &'static MMTK<Ruby> {
 
 pub fn upcalls() -> &'static RubyUpcalls {
     binding().upcalls()
+}
+
+pub static GC_THREADS: OnceCell<Mutex<HashSet<ThreadId>>> = OnceCell::new();
+
+pub(crate) fn register_gc_thread(thread_id: ThreadId) {
+    let mut gc_threads = GC_THREADS.get().unwrap().lock().unwrap();
+    gc_threads.insert(thread_id);
+}
+
+pub(crate) fn unregister_gc_thread(thread_id: ThreadId) {
+    let mut gc_threads = GC_THREADS.get().unwrap().lock().unwrap();
+    gc_threads.remove(&thread_id);
+}
+
+pub(crate) fn is_gc_thread(thread_id: ThreadId) -> bool {
+    let gc_threads = GC_THREADS.get().unwrap().lock().unwrap();
+    gc_threads.contains(&thread_id)
+}
+
+fn handle_gc_thread_panic(panic_info: &PanicInfo) {
+    eprintln!("ERROR: An MMTk GC thread panicked.  This is a bug.");
+    eprintln!("{panic_info}");
+
+    let bt = std::backtrace::Backtrace::capture();
+    match bt.status() {
+        std::backtrace::BacktraceStatus::Unsupported => {
+            eprintln!("Backtrace is unsupported.")
+        }
+        std::backtrace::BacktraceStatus::Disabled => {
+            eprintln!("Backtrace is disabled.");
+            eprintln!("run with `RUST_BACKTRACE=1` environment variable to display a backtrace");
+        }
+        std::backtrace::BacktraceStatus::Captured => {
+            eprintln!("{bt}");
+        }
+        s => {
+            eprintln!("Unknown backtrace status: {s:?}");
+        }
+    }
+
+    std::process::abort();
+}
+
+pub(crate) fn set_panic_hook() {
+    if GC_THREADS.set(Default::default()).is_err() {
+        return;
+    }
+
+    let old_hook = std::panic::take_hook();
+
+    std::panic::set_hook(Box::new(move |panic_info| {
+        if is_gc_thread(std::thread::current().id()) {
+            handle_gc_thread_panic(panic_info);
+        } else {
+            old_hook(panic_info);
+        }
+    }));
 }

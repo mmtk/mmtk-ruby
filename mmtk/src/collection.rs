@@ -35,6 +35,7 @@ impl Collection<Ruby> for VMCollection {
                     .name("MMTk Controller Thread".to_string())
                     .spawn(move || {
                         debug!("Hello! This is MMTk Controller Thread running!");
+                        crate::register_gc_thread(thread::current().id());
                         let ptr_controller = &mut *controller as *mut GCController<Ruby>;
                         let gc_thread_tls =
                             Box::into_raw(Box::new(GCThreadTLS::for_controller(ptr_controller)));
@@ -43,7 +44,12 @@ impl Collection<Ruby> for VMCollection {
                             mmtk(),
                             GCThreadTLS::to_vwt(gc_thread_tls),
                             &mut controller,
-                        )
+                        );
+
+                        // Currently the MMTk controller thread should run forever.
+                        // This is an unlikely event, but we log it anyway.
+                        warn!("The MMTk Controller Thread is quitting!");
+                        crate::unregister_gc_thread(thread::current().id());
                     })
                     .unwrap();
             }
@@ -52,6 +58,7 @@ impl Collection<Ruby> for VMCollection {
                     .name("MMTk Worker Thread".to_string())
                     .spawn(move || {
                         debug!("Hello! This is MMTk Worker Thread running!");
+                        crate::register_gc_thread(thread::current().id());
                         let ptr_worker = &mut *worker as *mut GCWorker<Ruby>;
                         let gc_thread_tls =
                             Box::into_raw(Box::new(GCThreadTLS::for_worker(ptr_worker)));
@@ -60,7 +67,12 @@ impl Collection<Ruby> for VMCollection {
                             mmtk(),
                             GCThreadTLS::to_vwt(gc_thread_tls),
                             &mut worker,
-                        )
+                        );
+
+                        // Currently all MMTk worker threads should run forever.
+                        // This is an unlikely event, but we log it anyway.
+                        warn!("An MMTk Worker Thread is quitting!");
+                        crate::unregister_gc_thread(thread::current().id());
                     })
                     .unwrap();
             }
