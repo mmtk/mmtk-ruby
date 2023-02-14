@@ -234,3 +234,8 @@ pub extern "C" fn mmtk_get_all_obj_free_candidates() -> RawVecOfObjRef {
 pub extern "C" fn mmtk_free_raw_vec_of_obj_ref(raw_vec: RawVecOfObjRef) {
     unsafe { raw_vec.into_vec() };
 }
+
+#[no_mangle]
+pub extern "C" fn mmtk_register_ppp(object: ObjectReference) {
+    crate::binding().ppp_registry.register(object)
+}

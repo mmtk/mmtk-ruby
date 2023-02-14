@@ -5,6 +5,7 @@ use mmtk::MMTK;
 
 use crate::abi;
 use crate::abi::RubyBindingOptions;
+use crate::ppp::PPPRegistry;
 use crate::weak_proc::WeakProcessor;
 use crate::Ruby;
 
@@ -25,6 +26,7 @@ pub struct RubyBinding {
     pub upcalls: *const abi::RubyUpcalls,
     pub plan_name: Mutex<Option<CString>>,
     pub weak_proc: WeakProcessor,
+    pub ppp_registry: PPPRegistry,
 }
 
 unsafe impl Sync for RubyBinding {}
@@ -45,6 +47,7 @@ impl RubyBinding {
             upcalls,
             plan_name: Mutex::new(None),
             weak_proc: WeakProcessor::new(),
+            ppp_registry: PPPRegistry::new(),
         }
     }
 

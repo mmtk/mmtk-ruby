@@ -17,6 +17,7 @@ impl Collection<Ruby> for VMCollection {
         F: FnMut(&'static mut mmtk::Mutator<Ruby>),
     {
         (upcalls().stop_the_world)(tls);
+        crate::binding().ppp_registry.pin_ppps(tls);
     }
 
     fn resume_mutators(tls: VMWorkerThread) {
