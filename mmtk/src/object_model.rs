@@ -1,3 +1,6 @@
+use std::ptr::copy_nonoverlapping;
+
+use crate::abi::{RubyObjectAccess, MIN_OBJ_ALIGN, OBJREF_OFFSET};
 use crate::{abi, Ruby};
 use mmtk::util::copy::{CopySemantics, GCWorkerCopyContext};
 use mmtk::util::{Address, ObjectReference};
@@ -32,32 +35,37 @@ impl ObjectModel<Ruby> for VMObjectModel {
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = Self::OBJREF_OFFSET as isize;
 
     fn copy(
-        _from: ObjectReference,
-        _semantics: CopySemantics,
-        _copy_context: &mut GCWorkerCopyContext<Ruby>,
+        from: ObjectReference,
+        semantics: CopySemantics,
+        copy_context: &mut GCWorkerCopyContext<Ruby>,
     ) -> ObjectReference {
-        todo!()
+        let from_acc = RubyObjectAccess::from_objref(from);
+        let from_start = from_acc.obj_start();
+        let object_size = from_acc.object_size();
+        let to_start = copy_context.alloc_copy(from, object_size, MIN_OBJ_ALIGN, 0, semantics);
+        let to_payload = to_start.add(OBJREF_OFFSET);
+        unsafe {
+            copy_nonoverlapping::<u8>(from_start.to_ptr(), to_start.to_mut_ptr(), object_size);
+        }
+        let to_obj = ObjectReference::from_raw_address(to_payload);
+        copy_context.post_copy(to_obj, object_size, semantics);
+        to_obj
     }
 
     fn copy_to(_from: ObjectReference, _to: ObjectReference, _region: Address) -> Address {
-        todo!()
+        unimplemented!(
+            "This function cannot be called because we do not support MarkCompact for Ruby."
+        )
     }
 
     fn get_reference_when_copied_to(_from: ObjectReference, _to: Address) -> ObjectReference {
-        todo!()
+        unimplemented!(
+            "This function cannot be called because we do not support MarkCompact for Ruby."
+        )
     }
 
     fn get_current_size(object: ObjectReference) -> usize {
-        // Currently, a hidden size field of word size is placed before each object.
-        let prefix_size = abi::OBJREF_OFFSET;
-
-        // That hidden field holds the payload size.
-        let start = Self::ref_to_object_start(object);
-        let payload_size = unsafe { start.load::<usize>() };
-
-        // In RACTOR_CHECK_MODE, Ruby hides a field after each object to hold the Ractor ID.
-        let suffix_size = unsafe { crate::BINDING_FAST.suffix_size };
-        prefix_size + payload_size + suffix_size
+        RubyObjectAccess::from_objref(object).object_size()
     }
 
     fn get_type_descriptor(_reference: ObjectReference) -> &'static [i8] {
@@ -69,11 +77,11 @@ impl ObjectModel<Ruby> for VMObjectModel {
     }
 
     fn ref_to_object_start(object: ObjectReference) -> Address {
-        object.to_raw_address() - Self::OBJREF_OFFSET
+        RubyObjectAccess::from_objref(object).obj_start()
     }
 
     fn ref_to_header(object: ObjectReference) -> Address {
-        object.to_raw_address()
+        RubyObjectAccess::from_objref(object).payload_addr()
     }
 
     fn address_to_ref(addr: Address) -> ObjectReference {
