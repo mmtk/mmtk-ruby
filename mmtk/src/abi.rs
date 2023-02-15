@@ -273,6 +273,7 @@ pub struct RubyBindingOptions {
 pub struct RubyUpcalls {
     pub init_gc_worker_thread: extern "C" fn(gc_worker_tls: *mut GCThreadTLS),
     pub get_gc_thread_tls: extern "C" fn() -> *mut GCThreadTLS,
+    pub is_mutator: extern "C" fn() -> bool,
     pub stop_the_world: extern "C" fn(tls: VMWorkerThread),
     pub resume_mutators: extern "C" fn(tls: VMWorkerThread),
     pub block_for_gc: extern "C" fn(tls: VMMutatorThread),

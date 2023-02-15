@@ -18,8 +18,7 @@ impl ActivePlan<Ruby> for VMActivePlan {
     }
 
     fn is_mutator(_tls: VMThread) -> bool {
-        // FIXME
-        true
+        (upcalls().is_mutator)()
     }
 
     fn mutator(_tls: VMMutatorThread) -> &'static mut Mutator<Ruby> {

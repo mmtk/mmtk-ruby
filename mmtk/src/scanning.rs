@@ -4,7 +4,7 @@ use crate::{upcalls, Ruby, RubyEdge};
 use mmtk::scheduler::GCWorker;
 use mmtk::util::{ObjectReference, VMWorkerThread};
 use mmtk::vm::{EdgeVisitor, ObjectTracer, RootsWorkFactory, Scanning};
-use mmtk::{Mutator, MutatorContext};
+use mmtk::{memory_manager, Mutator, MutatorContext};
 
 pub struct VMScanning {}
 
@@ -33,8 +33,13 @@ impl Scanning<Ruby> for VMScanning {
             "Not an MMTk object: {object}",
         );
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
-        let visit_object = |_worker, target_object: ObjectReference, _pin| {
-            trace!("Tracing object: {} -> {}", object, target_object);
+        let visit_object = |_worker, target_object: ObjectReference, pin| {
+            trace!(
+                "Tracing object: {} -> {}{}",
+                object,
+                target_object,
+                if pin { " pin" } else { "" }
+            );
             debug_assert!(
                 mmtk::memory_manager::is_mmtk_object(target_object.to_raw_address()),
                 "Destination is not an MMTk object. Src: {object} dst: {target_object}"
@@ -90,6 +95,7 @@ impl Scanning<Ruby> for VMScanning {
             .weak_proc
             .process_weak_stuff(worker, tracer_context);
         crate::binding().ppp_registry.cleanup_ppps();
+        crate::binding().unpin_pinned_roots();
         false
     }
 
@@ -111,8 +117,21 @@ impl VMScanning {
         callback: F,
     ) {
         let mut buffer: Vec<ObjectReference> = Vec::new();
-        let visit_object = |_, object: ObjectReference, _pin| {
-            debug!("[{}] Scanning object: {}", root_scan_kind, object);
+        let mut my_pinned_roots = vec![];
+        let visit_object = |_, object: ObjectReference, pin| {
+            debug!(
+                "[{}] Visiting object: {}{}",
+                root_scan_kind,
+                object,
+                if pin {
+                    "(unmovable root)"
+                } else {
+                    "(movable, but we pin it anyway)"
+                }
+            );
+            if memory_manager::pin_object::<Ruby>(object) {
+                my_pinned_roots.push(object);
+            }
             buffer.push(object);
             if buffer.len() >= Self::OBJECT_BUFFER_SIZE {
                 factory.create_process_node_roots_work(std::mem::take(&mut buffer));
@@ -122,8 +141,20 @@ impl VMScanning {
         gc_tls
             .object_closure
             .set_temporarily_and_run_code(visit_object, callback);
+
         if !buffer.is_empty() {
             factory.create_process_node_roots_work(buffer);
+        }
+
+        info!(
+            "Pinned {} node roots during {}",
+            my_pinned_roots.len(),
+            root_scan_kind
+        );
+
+        {
+            let mut pinned_roots = crate::binding().pinned_roots.lock().unwrap();
+            pinned_roots.append(&mut my_pinned_roots);
         }
     }
 }
