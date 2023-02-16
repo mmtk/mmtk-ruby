@@ -286,6 +286,7 @@ pub struct RubyUpcalls {
     pub scan_object_ruby_style: extern "C" fn(object: ObjectReference),
     pub call_gc_mark_children: extern "C" fn(object: ObjectReference),
     pub call_obj_free: extern "C" fn(object: ObjectReference),
+    pub update_global_weak_tables_early: extern "C" fn(),
     pub update_global_weak_tables: extern "C" fn(),
 }
 

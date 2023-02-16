@@ -56,6 +56,24 @@ impl WeakProcessor {
 
         // Enable tracer in this scope.
         tracer_context.with_tracer(worker, |tracer| {
+            // Forward some global weak tables that needs to be handled before obj_free.
+            let forward_object = |_worker, object: ObjectReference, _pin| {
+                debug_assert!(mmtk::memory_manager::is_mmtk_object(
+                    VMObjectModel::ref_to_address(object)
+                ));
+                let result = tracer.trace_object(object);
+                trace!("Forwarding reference: {} -> {}", object, result);
+                result
+            };
+
+            gc_tls
+                .object_closure
+                .set_temporarily_and_run_code(forward_object, || {
+                    log::debug!("Updating early global weak tables...");
+                    (upcalls().update_global_weak_tables_early)();
+                    log::debug!("Finished updating early global weak tables.");
+                });
+
             // Process obj_free
             let mut new_candidates = Vec::new();
 
@@ -76,7 +94,7 @@ impl WeakProcessor {
 
             *obj_free_candidates = new_candidates;
 
-            // Forward global weak tables
+            // Forward other global weak tables
             let forward_object = |_worker, object: ObjectReference, _pin| {
                 debug_assert!(mmtk::memory_manager::is_mmtk_object(
                     VMObjectModel::ref_to_address(object)
