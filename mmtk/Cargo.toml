@@ -32,3 +32,7 @@ features = ["is_mmtk_object", "object_pinning"]
 # Uncomment one of the following lines to choose where to find mmtk-core.
 git = "https://github.com/mmtk/mmtk-core.git"  # Use mmtk-core from the official repository.
 #path = "../../mmtk-core"  # Use mmtk-core from a local repository.
+
+[features]
+# When moving an object, clear its original copy.
+clear_old_copy = []

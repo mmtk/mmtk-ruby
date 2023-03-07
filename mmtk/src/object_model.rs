@@ -2,6 +2,7 @@ use std::ptr::copy_nonoverlapping;
 
 use crate::abi::{RubyObjectAccess, MIN_OBJ_ALIGN, OBJREF_OFFSET};
 use crate::{abi, Ruby};
+use mmtk::util::constants::BITS_IN_BYTE;
 use mmtk::util::copy::{CopySemantics, GCWorkerCopyContext};
 use mmtk::util::{Address, ObjectReference};
 use mmtk::vm::*;
@@ -15,9 +16,9 @@ impl VMObjectModel {
 impl ObjectModel<Ruby> for VMObjectModel {
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
 
-    // FIXME: 0 is probably not right.  We will correct this once we start to support copying GC.
+    // We overwrite the prepended word which were used to hold object sizes.
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec =
-        VMLocalForwardingPointerSpec::in_header(0);
+        VMLocalForwardingPointerSpec::in_header(-((OBJREF_OFFSET * BITS_IN_BYTE) as isize));
 
     const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec =
         VMLocalForwardingBitsSpec::side_first();
@@ -49,6 +50,13 @@ impl ObjectModel<Ruby> for VMObjectModel {
         }
         let to_obj = ObjectReference::from_raw_address(to_payload);
         copy_context.post_copy(to_obj, object_size, semantics);
+
+        if cfg!(feature = "clear_old_copy") {
+            // For debug purpose, we clear the old copy so that if the Ruby VM reads from the old
+            // copy again, it will likely result in an error.
+            unsafe { std::ptr::write_bytes::<u8>(from_start.to_mut_ptr(), 0, object_size) }
+        }
+
         to_obj
     }
 
