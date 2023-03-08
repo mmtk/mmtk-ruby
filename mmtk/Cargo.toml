@@ -34,5 +34,7 @@ git = "https://github.com/mmtk/mmtk-core.git"  # Use mmtk-core from the official
 #path = "../../mmtk-core"  # Use mmtk-core from a local repository.
 
 [features]
+default = ["clear_old_copy"]
+
 # When moving an object, clear its original copy.
 clear_old_copy = []

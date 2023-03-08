@@ -51,7 +51,9 @@ impl ObjectModel<Ruby> for VMObjectModel {
         let to_obj = ObjectReference::from_raw_address(to_payload);
         copy_context.post_copy(to_obj, object_size, semantics);
 
-        if cfg!(feature = "clear_old_copy") {
+        #[cfg(feature = "clear_old_copy")]
+        {
+            trace!("Clearing old copy {} ({}-{})", from, from_start, from_start + object_size);
             // For debug purpose, we clear the old copy so that if the Ruby VM reads from the old
             // copy again, it will likely result in an error.
             unsafe { std::ptr::write_bytes::<u8>(from_start.to_mut_ptr(), 0, object_size) }
