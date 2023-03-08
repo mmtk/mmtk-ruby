@@ -146,7 +146,7 @@ impl VMScanning {
             factory.create_process_node_roots_work(buffer);
         }
 
-        info!(
+        debug!(
             "Pinned {} node roots during {}",
             my_pinned_roots.len(),
             root_scan_kind
