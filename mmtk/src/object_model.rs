@@ -50,6 +50,7 @@ impl ObjectModel<Ruby> for VMObjectModel {
         }
         let to_obj = ObjectReference::from_raw_address(to_payload);
         copy_context.post_copy(to_obj, object_size, semantics);
+        trace!("Copied object from {} to {}", from, to_obj);
 
         #[cfg(feature = "clear_old_copy")]
         {
