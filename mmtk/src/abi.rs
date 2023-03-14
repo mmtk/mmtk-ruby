@@ -10,6 +10,9 @@ pub const MIN_OBJ_ALIGN: usize = 8; // Even on 32-bit machine.  A Ruby object is
 pub const GC_THREAD_KIND_CONTROLLER: libc::c_int = 0;
 pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
+const HAS_MOVED_GIVTBL: usize = 1 << 63;
+const HIDDEN_SIZE_MASK: usize = 0x0000FFFFFFFFFFFF;
+
 /// Provide convenient methods for accessing Ruby objects.
 /// TODO: Wrap C functions in `RubyUpcalls` as Rust-friendly methods.
 pub struct RubyObjectAccess {
@@ -41,15 +44,40 @@ impl RubyObjectAccess {
         self.obj_start()
     }
 
-    pub fn payload_size(&self) -> usize {
+    fn load_hidden_field(&self) -> usize {
+        unsafe { self.hidden_field().load::<usize>() }
+    }
+
+    fn update_hidden_field<F>(&self, f: F)
+    where
+        F: FnOnce(usize) -> usize,
+    {
+        let old_value = self.load_hidden_field();
+        let new_value = f(old_value);
         unsafe {
-            // That hidden field holds the payload size.
-            self.hidden_field().load()
+            self.hidden_field().store(new_value);
         }
     }
 
+    pub fn payload_size(&self) -> usize {
+        self.load_hidden_field() & HIDDEN_SIZE_MASK
+    }
+
     pub fn set_payload_size(&self, size: usize) {
-        unsafe { self.hidden_field().store(size) }
+        debug_assert!((size & HIDDEN_SIZE_MASK) == size);
+        self.update_hidden_field(|old| old & !HIDDEN_SIZE_MASK | size & HIDDEN_SIZE_MASK);
+    }
+
+    pub fn has_moved_givtbl(&self) -> bool {
+        (self.load_hidden_field() & HAS_MOVED_GIVTBL) != 0
+    }
+
+    pub fn set_has_moved_givtbl(&self) {
+        self.update_hidden_field(|old| old | HAS_MOVED_GIVTBL)
+    }
+
+    pub fn clear_has_moved_givtbl(&self) {
+        self.update_hidden_field(|old| old & !HAS_MOVED_GIVTBL)
     }
 
     pub fn prefix_size() -> usize {
@@ -64,6 +92,37 @@ impl RubyObjectAccess {
 
     pub fn object_size(&self) -> usize {
         Self::prefix_size() + self.payload_size() + Self::suffix_size()
+    }
+
+    pub fn get_givtbl(&self) -> *mut libc::c_void {
+        if self.has_moved_givtbl() {
+            let moved_givtbl = crate::binding().moved_givtbl.lock().unwrap();
+            moved_givtbl
+                .get(&self.objref)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Object {} has HAS_MOVED_GIVTBL flag but not an entry in `moved_givtbl`",
+                        self.objref
+                    )
+                })
+                .gen_ivtbl
+        } else {
+            self.get_original_givtbl().unwrap_or_else(|| {
+                panic!(
+                    "Object {} does not have HAS_MOVED_GIVTBL flag or original givtbl",
+                    self.objref
+                )
+            })
+        }
+    }
+
+    pub fn get_original_givtbl(&self) -> Option<*mut libc::c_void> {
+        let addr = (upcalls().get_original_givtbl)(self.objref);
+        if addr.is_null() {
+            None
+        } else {
+            Some(addr)
+        }
     }
 }
 
@@ -288,6 +347,8 @@ pub struct RubyUpcalls {
     pub call_obj_free: extern "C" fn(object: ObjectReference),
     pub update_global_weak_tables_early: extern "C" fn(),
     pub update_global_weak_tables: extern "C" fn(),
+    pub get_original_givtbl: extern "C" fn(object: ObjectReference) -> *mut libc::c_void,
+    pub move_givtbl: extern "C" fn(old_objref: ObjectReference, new_objref: ObjectReference),
 }
 
 unsafe impl Sync for RubyUpcalls {}

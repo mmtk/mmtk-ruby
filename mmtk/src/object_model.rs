@@ -41,6 +41,7 @@ impl ObjectModel<Ruby> for VMObjectModel {
         copy_context: &mut GCWorkerCopyContext<Ruby>,
     ) -> ObjectReference {
         let from_acc = RubyObjectAccess::from_objref(from);
+        let maybe_givtbl = from_acc.get_original_givtbl();
         let from_start = from_acc.obj_start();
         let object_size = from_acc.object_size();
         let to_start = copy_context.alloc_copy(from, object_size, MIN_OBJ_ALIGN, 0, semantics);
@@ -54,10 +55,30 @@ impl ObjectModel<Ruby> for VMObjectModel {
 
         #[cfg(feature = "clear_old_copy")]
         {
-            trace!("Clearing old copy {} ({}-{})", from, from_start, from_start + object_size);
+            trace!(
+                "Clearing old copy {} ({}-{})",
+                from,
+                from_start,
+                from_start + object_size
+            );
             // For debug purpose, we clear the old copy so that if the Ruby VM reads from the old
             // copy again, it will likely result in an error.
             unsafe { std::ptr::write_bytes::<u8>(from_start.to_mut_ptr(), 0, object_size) }
+        }
+
+        if let Some(givtbl) = maybe_givtbl {
+            {
+                let mut moved_givtbl = crate::binding().moved_givtbl.lock().unwrap();
+                moved_givtbl.insert(
+                    to_obj,
+                    crate::binding::MovedGIVTblEntry {
+                        old_objref: from,
+                        gen_ivtbl: givtbl,
+                    },
+                );
+            }
+            let to_acc = RubyObjectAccess::from_objref(to_obj);
+            to_acc.set_has_moved_givtbl();
         }
 
         to_obj

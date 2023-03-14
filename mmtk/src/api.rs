@@ -6,6 +6,7 @@ use std::ffi::CStr;
 use crate::abi;
 use crate::abi::RawVecOfObjRef;
 use crate::abi::RubyBindingOptions;
+use crate::abi::RubyObjectAccess;
 use crate::binding;
 use crate::binding::RubyBinding;
 use crate::mmtk;
@@ -240,4 +241,10 @@ pub extern "C" fn mmtk_free_raw_vec_of_obj_ref(raw_vec: RawVecOfObjRef) {
 #[no_mangle]
 pub extern "C" fn mmtk_register_ppp(object: ObjectReference) {
     crate::binding().ppp_registry.register(object)
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_get_givtbl(object: ObjectReference) -> *mut libc::c_void {
+    let acc = RubyObjectAccess::from_objref(object);
+    acc.get_givtbl()
 }

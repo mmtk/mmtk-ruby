@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::ffi::CString;
 use std::sync::Mutex;
 
+use libc::c_void;
 use mmtk::util::ObjectReference;
 use mmtk::{memory_manager, MMTK};
 
@@ -21,6 +23,11 @@ impl RubyBindingFast {
     }
 }
 
+pub(crate) struct MovedGIVTblEntry {
+    pub old_objref: ObjectReference,
+    pub gen_ivtbl: *mut c_void,
+}
+
 pub struct RubyBinding {
     pub mmtk: &'static MMTK<Ruby>,
     pub options: RubyBindingOptions,
@@ -29,6 +36,7 @@ pub struct RubyBinding {
     pub weak_proc: WeakProcessor,
     pub ppp_registry: PPPRegistry,
     pub(crate) pinned_roots: Mutex<Vec<ObjectReference>>,
+    pub(crate) moved_givtbl: Mutex<HashMap<ObjectReference, MovedGIVTblEntry>>,
 }
 
 unsafe impl Sync for RubyBinding {}
@@ -51,6 +59,7 @@ impl RubyBinding {
             weak_proc: WeakProcessor::new(),
             ppp_registry: PPPRegistry::new(),
             pinned_roots: Default::default(),
+            moved_givtbl: Default::default(),
         }
     }
 

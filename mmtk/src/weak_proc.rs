@@ -6,7 +6,12 @@ use mmtk::{
     vm::{ObjectModel, ObjectTracer, ObjectTracerContext},
 };
 
-use crate::{abi::GCThreadTLS, object_model::VMObjectModel, upcalls, Ruby};
+use crate::{
+    abi::{GCThreadTLS, RubyObjectAccess},
+    binding::MovedGIVTblEntry,
+    object_model::VMObjectModel,
+    upcalls, Ruby,
+};
 
 pub struct WeakProcessor {
     /// Objects that needs `obj_free` called when dying.
@@ -103,6 +108,20 @@ impl WeakProcessor {
                 trace!("Forwarding reference: {} -> {}", object, result);
                 result
             };
+
+            log::debug!("Updating global ivtbl entries...");
+            {
+                let mut moved_givtbl = crate::binding()
+                    .moved_givtbl
+                    .try_lock()
+                    .expect("Should have no race in weak_proc");
+                for (new_objref, MovedGIVTblEntry { old_objref, .. }) in moved_givtbl.drain() {
+                    trace!("  givtbl {} -> {}", old_objref, new_objref);
+                    RubyObjectAccess::from_objref(new_objref).clear_has_moved_givtbl();
+                    (upcalls().move_givtbl)(old_objref, new_objref);
+                }
+            }
+            log::debug!("Updated global ivtbl entries.");
 
             gc_tls
                 .object_closure
