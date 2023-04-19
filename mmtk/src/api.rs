@@ -188,7 +188,7 @@ pub extern "C" fn mmtk_get_forwarded_object(object: ObjectReference) -> ObjectRe
 #[no_mangle]
 pub extern "C" fn mmtk_is_mmtk_object(addr: Address) -> bool {
     debug_assert!(!addr.is_zero());
-    debug_assert!(addr.is_aligned_to(mmtk::util::is_mmtk_object::ALLOC_BIT_REGION_SIZE));
+    debug_assert!(addr.is_aligned_to(mmtk::util::is_mmtk_object::VO_BIT_REGION_SIZE));
     memory_manager::is_mmtk_object(addr)
 }
 
