@@ -10,8 +10,6 @@ use std::thread;
 pub struct VMCollection {}
 
 impl Collection<Ruby> for VMCollection {
-    const COORDINATOR_ONLY_STW: bool = true;
-
     fn stop_all_mutators<F>(tls: VMWorkerThread, _mutator_visitor: F)
     where
         F: FnMut(&'static mut mmtk::Mutator<Ruby>),
