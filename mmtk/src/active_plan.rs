@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::mmtk;
 use crate::upcalls;
 use crate::Ruby;
@@ -25,16 +27,39 @@ impl ActivePlan<Ruby> for VMActivePlan {
         unimplemented!()
     }
 
-    fn reset_mutator_iterator() {
-        (upcalls().reset_mutator_iterator)();
-    }
+    fn mutators<'a>() -> Box<dyn Iterator<Item = &'a mut Mutator<Ruby>> + 'a> {
+        let mut mutators = vec![];
+        (upcalls().get_mutators)(
+            add_mutator_to_vec,
+            &mut mutators as *mut Vec<*mut Mutator<Ruby>> as _,
+        );
 
-    fn get_next_mutator() -> Option<&'static mut Mutator<Ruby>> {
-        let ptr = (upcalls().get_next_mutator)();
-        if ptr.is_null() {
-            None
-        } else {
-            Some(unsafe { &mut (*ptr) as &'static mut Mutator<Ruby> })
-        }
+        Box::new(RubyMutatorIterator {
+            mutators,
+            cursor: 0,
+            phantom_data: PhantomData,
+        })
+    }
+}
+
+extern "C" fn add_mutator_to_vec(mutator: *mut Mutator<Ruby>, mutators: *mut libc::c_void) {
+    let mutators = unsafe { &mut *(mutators as *mut Vec<*mut Mutator<Ruby>>) };
+    mutators.push(mutator);
+}
+
+struct RubyMutatorIterator<'a> {
+    mutators: Vec<*mut Mutator<Ruby>>,
+    cursor: usize,
+    phantom_data: PhantomData<&'a ()>,
+}
+
+impl<'a> Iterator for RubyMutatorIterator<'a> {
+    type Item = &'a mut Mutator<Ruby>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.mutators.get(self.cursor).cloned().map(|mutator_ptr| {
+            self.cursor += 1;
+            unsafe { &mut *mutator_ptr as _ }
+        })
     }
 }

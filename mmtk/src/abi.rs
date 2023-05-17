@@ -337,8 +337,10 @@ pub struct RubyUpcalls {
     pub resume_mutators: extern "C" fn(tls: VMWorkerThread),
     pub block_for_gc: extern "C" fn(tls: VMMutatorThread),
     pub number_of_mutators: extern "C" fn() -> usize,
-    pub reset_mutator_iterator: extern "C" fn(),
-    pub get_next_mutator: extern "C" fn() -> *mut RubyMutator,
+    pub get_mutators: extern "C" fn(
+        visit_mutator: extern "C" fn(*mut RubyMutator, *mut libc::c_void),
+        data: *mut libc::c_void,
+    ),
     pub scan_vm_specific_roots: extern "C" fn(),
     pub scan_thread_roots: extern "C" fn(),
     pub scan_thread_root: extern "C" fn(mutator_tls: VMMutatorThread, worker_tls: VMWorkerThread),
