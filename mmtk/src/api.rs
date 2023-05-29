@@ -110,7 +110,7 @@ pub extern "C" fn mmtk_alloc(
     mutator: *mut RubyMutator,
     size: usize,
     align: usize,
-    offset: isize,
+    offset: usize,
     semantics: AllocationSemantics,
 ) -> Address {
     let clamped_size = size.max(MIN_OBJECT_SIZE);
