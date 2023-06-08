@@ -57,11 +57,14 @@ impl Scanning<Ruby> for VMScanning {
         // Do nothing
     }
 
-    fn scan_thread_roots(_tls: VMWorkerThread, _factory: impl RootsWorkFactory<RubyEdge>) {
+    fn scan_roots_in_all_mutator_threads(
+        _tls: VMWorkerThread,
+        _factory: impl RootsWorkFactory<RubyEdge>,
+    ) {
         unreachable!();
     }
 
-    fn scan_thread_root(
+    fn scan_roots_in_mutator_thread(
         tls: VMWorkerThread,
         mutator: &'static mut Mutator<Ruby>,
         mut factory: impl RootsWorkFactory<RubyEdge>,
