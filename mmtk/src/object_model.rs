@@ -35,6 +35,8 @@ impl ObjectModel<Ruby> for VMObjectModel {
     const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = false;
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = Self::OBJREF_OFFSET as isize;
 
+    const NEED_VO_BITS_DURING_TRACING: bool = true;
+
     fn copy(
         from: ObjectReference,
         semantics: CopySemantics,
