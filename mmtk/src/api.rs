@@ -228,6 +228,12 @@ pub extern "C" fn mmtk_add_obj_free_candidate(object: ObjectReference) {
 }
 
 #[no_mangle]
+pub extern "C" fn mmtk_add_obj_free_candidates(objects: *const ObjectReference, len: usize) {
+    let objects_slice = unsafe { std::slice::from_raw_parts(objects, len) };
+    binding().weak_proc.add_obj_free_candidates(objects_slice)
+}
+
+#[no_mangle]
 pub extern "C" fn mmtk_get_all_obj_free_candidates() -> RawVecOfObjRef {
     let vec = binding().weak_proc.get_all_obj_free_candidates();
     RawVecOfObjRef::from_vec(vec)
@@ -241,6 +247,12 @@ pub extern "C" fn mmtk_free_raw_vec_of_obj_ref(raw_vec: RawVecOfObjRef) {
 #[no_mangle]
 pub extern "C" fn mmtk_register_ppp(object: ObjectReference) {
     crate::binding().ppp_registry.register(object)
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_register_ppps(objects: *const ObjectReference, len: usize) {
+    let objects_slice = unsafe { std::slice::from_raw_parts(objects, len) };
+    crate::binding().ppp_registry.register_many(objects_slice)
 }
 
 #[no_mangle]

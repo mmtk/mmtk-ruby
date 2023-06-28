@@ -26,6 +26,13 @@ impl PPPRegistry {
         ppps.push(object);
     }
 
+    pub fn register_many(&self, objects: &[ObjectReference]) {
+        let mut ppps = self.ppps.lock().unwrap();
+        for object in objects.iter().copied() {
+            ppps.push(object);
+        }
+    }
+
     pub fn pin_ppps(&self, tls: VMWorkerThread) {
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
 

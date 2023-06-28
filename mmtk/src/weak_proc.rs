@@ -33,12 +33,22 @@ impl WeakProcessor {
         }
     }
 
-    /// Add an object as a candicate for `obj_free`.
+    /// Add an object as a candidate for `obj_free`.
     ///
     /// Multiple mutators can call it concurrently, so it has `&self`.
     pub fn add_obj_free_candidate(&self, object: ObjectReference) {
         let mut obj_free_candidates = self.obj_free_candidates.lock().unwrap();
         obj_free_candidates.push(object);
+    }
+
+    /// Add many objects as candidates for `obj_free`.
+    ///
+    /// Multiple mutators can call it concurrently, so it has `&self`.
+    pub fn add_obj_free_candidates(&self, objects: &[ObjectReference]) {
+        let mut obj_free_candidates = self.obj_free_candidates.lock().unwrap();
+        for object in objects.iter().copied() {
+            obj_free_candidates.push(object);
+        }
     }
 
     pub fn get_all_obj_free_candidates(&self) -> Vec<ObjectReference> {
