@@ -248,3 +248,14 @@ pub extern "C" fn mmtk_get_givtbl(object: ObjectReference) -> *mut libc::c_void 
     let acc = RubyObjectAccess::from_objref(object);
     acc.get_givtbl()
 }
+
+#[no_mangle]
+pub extern "C" fn mmtk_get_vo_bit_log_region_size() -> usize {
+    // TODO: Fix mmtk-core to make the log region size public
+    mmtk::util::is_mmtk_object::VO_BIT_REGION_SIZE.trailing_zeros() as usize
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_get_vo_bit_base() -> usize {
+    mmtk::util::metadata::side_metadata::VO_BIT_SIDE_METADATA_ADDR.as_usize()
+}
