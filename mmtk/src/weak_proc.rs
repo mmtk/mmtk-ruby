@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
 use mmtk::{
-    scheduler::GCWorker,
+    scheduler::{GCWork, GCWorker, WorkBucketStage},
     util::ObjectReference,
     vm::{ObjectModel, ObjectTracer, ObjectTracerContext},
 };
@@ -63,11 +63,7 @@ impl WeakProcessor {
     ) {
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(worker.tls) };
 
-        // If it blocks, it is a bug.
-        let mut obj_free_candidates = self
-            .obj_free_candidates
-            .try_lock()
-            .expect("It's GC time.  No mutators should hold this lock at this time.");
+        worker.add_work(WorkBucketStage::VMRefClosure, ProcessObjFreeCandidates);
 
         // Enable tracer in this scope.
         tracer_context.with_tracer(worker, |tracer| {
@@ -88,26 +84,6 @@ impl WeakProcessor {
                     (upcalls().update_global_weak_tables_early)();
                     log::debug!("Finished updating early global weak tables.");
                 });
-
-            // Process obj_free
-            let mut new_candidates = Vec::new();
-
-            for object in obj_free_candidates.iter().copied() {
-                if object.is_reachable() {
-                    // Forward and add back to the candidate list.
-                    let new_object = tracer.trace_object(object);
-                    trace!(
-                        "Forwarding obj_free candidate: {} -> {}",
-                        object,
-                        new_object
-                    );
-                    new_candidates.push(new_object);
-                } else {
-                    (upcalls().call_obj_free)(object);
-                }
-            }
-
-            *obj_free_candidates = new_candidates;
 
             // Forward other global weak tables
             let forward_object = |_worker, object: ObjectReference, _pin| {
@@ -141,5 +117,41 @@ impl WeakProcessor {
                     log::debug!("Finished updating global weak tables.");
                 });
         });
+    }
+}
+
+struct ProcessObjFreeCandidates;
+
+impl GCWork<Ruby> for ProcessObjFreeCandidates {
+    fn do_work(&mut self, _worker: &mut GCWorker<Ruby>, _mmtk: &'static mmtk::MMTK<Ruby>) {
+        // If it blocks, it is a bug.
+        let mut obj_free_candidates = crate::binding().weak_proc
+            .obj_free_candidates
+            .try_lock()
+            .expect("It's GC time.  No mutators should hold this lock at this time.");
+
+        let n_cands = obj_free_candidates.len();
+
+        debug!("Total: {} candidates", n_cands);
+
+        // Process obj_free
+        let mut new_candidates = Vec::new();
+
+        for object in obj_free_candidates.iter().copied() {
+            if object.is_reachable() {
+                // Forward and add back to the candidate list.
+                let new_object = object.get_forwarded_object().unwrap_or(object);
+                trace!(
+                    "Forwarding obj_free candidate: {} -> {}",
+                    object,
+                    new_object
+                );
+                new_candidates.push(new_object);
+            } else {
+                (upcalls().call_obj_free)(object);
+            }
+        }
+
+        *obj_free_candidates = new_candidates;
     }
 }
