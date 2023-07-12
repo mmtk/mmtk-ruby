@@ -214,48 +214,34 @@ make btest RUN_OPTS="--mmtk-plan=Immix"
 
 ### All tests
 
-<!-- FIXME: Check if anything below this still works. -->
+Note that currently it is not our priority to support Ractor.  Some tests
+involving Ractors are not enabled.  You can get a list of enabled tests at:
+https://github.com/Shopify/ruby-mmtk-builder/blob/main/mmtk_tests.txt
 
-To test Ruby, it is recommended that you add the `ADDITIONAL_EXCLUDES` option to exclude tests which make assumptions based on Ruby's current GC implementation, or are extremely memory intensive.
+To run the tests
 
 ```
-make test-all ADDITIONAL_EXCLUDES="--excludes-dir=./test/excludes/_third_party_heap"
+for test_case in $(grep -v "#" /path/to/mmtk_tests.txt); do
+    make test-all TESTS=$test_case RUN_OPTS="--mmtk-plan=Immix"
+done
 ```
 
 ## Current status
 
 Known working:
- - `./miniruby ./basictest/test.rb`
- - `make test`
- - Regular Ruby programs (note: this hasn't been tested on any extensive real-world programs, only <100 line dummy programs)
- - Basic Rails 5 app utilising a sqlite3 database:
-    ```bash
-    gem install rails -v 5.2.0
-    rails new hello
-    cd hello
-    rails generate scaffold User name:string email:string
-    rails db:migrate
-    rails server
-
-    # If you run into installation issues along the way, you may need to...
-    gem install sqlite3
-    gem install puma
-    # ...and try again
-    ```
+ - Supports MarkSweep and Immix GC algorithms
+ - All test cases in `make btest`
+ - Most test cases in `make test-all`
+ - Liquid benchmark (https://github.com/Shopify/liquid/blob/master/performance/benchmark.rb)
 
 Known issues:
- - `make test-all` fails. Many tests are GC implementation-dependent, so exclusion files have been created to ignore most of these. There are still >50 errors, but not all have been triaged or fixed yet.
  - `make test-rubyspec` is currently failing; need to find a way to exclude GC-specific specifications.
  - GC implementation-specific modules (e.g. `ObjectSpace`, `GC`, `WeakRef`) and anything that relies on them (e.g. `Coverage`) are not supported. For now, there are no plans to implement these as many of the APIs are irrelevant (e.g. `GC.stat`); however some may be fixed in the future (e.g. `ObjectSpace.each_object`)
  - MJIT is not supported.
 
 ## TODO
- - Add a runtime flag to enable MMTk/ruby, using environment variables. See #1
- - Rebase my changes onto the variable-sized objects heap (currently being developed by Shopify [here](https://github.com/Shopify/ruby/commits/mvh-pz-variable-width-allocation))
- - Use separate mutators for every thread for cache locality benefits (and correctness in case the GVL is ever removed)
- - Implement allocation fast paths
- - Fix tests
-
+ - Performance tuning
+ - Support StickyImmix GC algorithm
 
 ## Licensing
 
