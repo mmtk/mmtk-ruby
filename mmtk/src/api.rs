@@ -149,6 +149,11 @@ pub extern "C" fn mmtk_enable_collection() {
 }
 
 #[no_mangle]
+pub extern "C" fn mmtk_disable_collection() {
+    memory_manager::disable_collection(mmtk())
+}
+
+#[no_mangle]
 pub extern "C" fn mmtk_plan_name() -> *const libc::c_char {
     crate::binding().get_plan_name_c()
 }
@@ -270,4 +275,9 @@ pub extern "C" fn mmtk_get_vo_bit_log_region_size() -> usize {
 #[no_mangle]
 pub extern "C" fn mmtk_get_vo_bit_base() -> usize {
     mmtk::util::metadata::side_metadata::VO_BIT_SIDE_METADATA_ADDR.as_usize()
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_gc_poll(tls: VMMutatorThread) {
+    mmtk::memory_manager::gc_poll(mmtk(), tls)
 }
