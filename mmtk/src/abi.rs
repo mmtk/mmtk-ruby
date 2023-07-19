@@ -351,7 +351,7 @@ pub struct RubyUpcalls {
     pub update_global_weak_tables: extern "C" fn(),
     pub get_original_givtbl: extern "C" fn(object: ObjectReference) -> *mut libc::c_void,
     pub move_givtbl: extern "C" fn(old_objref: ObjectReference, new_objref: ObjectReference),
-    pub vm_allocated_bytes: extern "C" fn() -> usize,
+    pub vm_live_bytes: extern "C" fn() -> usize,
 }
 
 unsafe impl Sync for RubyUpcalls {}

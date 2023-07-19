@@ -85,7 +85,7 @@ impl Collection<Ruby> for VMCollection {
         // do nothing
     }
 
-    fn vm_allocated_pages() -> usize {
-        mmtk::util::conversions::bytes_to_pages_up((upcalls().vm_allocated_bytes)())
+    fn vm_live_bytes() -> usize {
+        (upcalls().vm_live_bytes)()
     }
 }
