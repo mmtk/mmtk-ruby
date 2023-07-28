@@ -64,13 +64,12 @@ impl WeakProcessor {
         worker.add_work(WorkBucketStage::VMRefClosure, ProcessObjFreeCandidates);
 
         worker.scheduler().work_buckets[WorkBucketStage::VMRefClosure].bulk_add(vec![
-            Box::new(UpdateGenericIVTbl) as _,
+            Box::new(UpdateGenericIvTbl) as _,
             Box::new(UpdateFrozenStringsTable) as _,
             Box::new(UpdateFinalizerTable) as _,
-            Box::new(UpdateObjToIDTbl) as _,
-            Box::new(UpdateIDToObjTbl) as _,
+            Box::new(UpdateObjIdTables) as _,
             Box::new(UpdateGlobalSymbolsTable) as _,
-            Box::new(UpdateOverloadedCMETable) as _,
+            Box::new(UpdateOverloadedCmeTable) as _,
         ])
     }
 
@@ -151,7 +150,7 @@ trait GlobalTableProcessingWork {
         let forward_object = |_worker, object: ObjectReference, _pin| {
             debug_assert!(mmtk::memory_manager::is_mmtk_object(
                 VMObjectModel::ref_to_address(object)
-            ));
+            ), "{} is not an MMTk object", object);
             let result = object.forward();
             trace!("Forwarding reference: {} -> {}", object, result);
             result
@@ -181,7 +180,7 @@ macro_rules! define_global_table_processor {
     };
 }
 
-define_global_table_processor!(UpdateGenericIVTbl, {
+define_global_table_processor!(UpdateGenericIvTbl, {
     WeakProcessor::update_generic_iv_tbl();
 });
 
@@ -193,19 +192,15 @@ define_global_table_processor!(UpdateFinalizerTable, {
     (crate::upcalls().update_finalizer_table)()
 });
 
-define_global_table_processor!(UpdateObjToIDTbl, {
-    (crate::upcalls().update_obj_to_id_tbl)()
-});
-
-define_global_table_processor!(UpdateIDToObjTbl, {
-    (crate::upcalls().update_id_to_obj_tbl)()
+define_global_table_processor!(UpdateObjIdTables, {
+    (crate::upcalls().update_obj_id_tables)()
 });
 
 define_global_table_processor!(UpdateGlobalSymbolsTable, {
     (crate::upcalls().update_global_symbols_table)()
 });
 
-define_global_table_processor!(UpdateOverloadedCMETable, {
+define_global_table_processor!(UpdateOverloadedCmeTable, {
     (crate::upcalls().update_overloaded_cme_table)()
 });
 
