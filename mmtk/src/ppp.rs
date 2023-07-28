@@ -1,8 +1,8 @@
 use std::sync::Mutex;
 
-use atomic_refcell::AtomicRefCell;
 use mmtk::{
     memory_manager,
+    scheduler::{GCWork, WorkBucketStage},
     util::{ObjectReference, VMWorkerThread},
 };
 
@@ -10,14 +10,14 @@ use crate::{abi::GCThreadTLS, upcalls, Ruby};
 
 pub struct PPPRegistry {
     ppps: Mutex<Vec<ObjectReference>>,
-    pinned_ppps: AtomicRefCell<Vec<ObjectReference>>,
+    pinned_ppp_children: Mutex<Vec<ObjectReference>>,
 }
 
 impl PPPRegistry {
     pub fn new() -> Self {
         Self {
             ppps: Default::default(),
-            pinned_ppps: Default::default(),
+            pinned_ppp_children: Default::default(),
         }
     }
 
@@ -33,12 +33,11 @@ impl PPPRegistry {
         }
     }
 
-    pub fn pin_ppps(&self, tls: VMWorkerThread) {
-        let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
-
-        let mut newly_pinned_ppps = vec![];
-
+    pub fn pin_ppp_children(&self, tls: VMWorkerThread) {
         log::debug!("Pin children of PPPs...");
+
+        let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
+        let worker = gc_tls.worker();
 
         {
             let ppps = self
@@ -46,41 +45,29 @@ impl PPPRegistry {
                 .try_lock()
                 .expect("PPPRegistry should not have races during GC.");
 
-            for obj in ppps.iter().cloned() {
-                log::trace!("  PPP: {}", obj);
+            // I tried several packet sizes and 512 works pretty well.  It should be adjustable.
+            let packet_size = 512;
+            let work_packets = ppps
+                .chunks(packet_size)
+                .map(|chunk| {
+                    Box::new(PinPPPChildren {
+                        ppps: chunk.to_vec(),
+                    }) as _
+                })
+                .collect();
 
-                let visit_object = |_worker, target_object: ObjectReference, pin| {
-                    log::trace!(
-                        "    -> {} {}",
-                        if pin { "(pin)" } else { "     " },
-                        target_object
-                    );
-                    if pin && memory_manager::pin_object::<Ruby>(target_object) {
-                        newly_pinned_ppps.push(target_object);
-                    }
-                    target_object
-                };
-                gc_tls
-                    .object_closure
-                    .set_temporarily_and_run_code(visit_object, || {
-                        (upcalls().call_gc_mark_children)(obj);
-                    });
-            }
-        }
-
-        {
-            let mut pinned_ppps = self.pinned_ppps.borrow_mut();
-            *pinned_ppps = newly_pinned_ppps;
+            worker.scheduler().work_buckets[WorkBucketStage::Prepare].bulk_add(work_packets);
         }
     }
 
     pub fn cleanup_ppps(&self) {
         log::debug!("Removing dead PPPs...");
+
         {
             let mut ppps = self
                 .ppps
                 .try_lock()
-                .expect("PPPRegistry should not have races during GC.");
+                .expect("PPPRegistry::ppps should not have races during GC.");
 
             ppps.retain_mut(|obj| {
                 if obj.is_live() {
@@ -95,7 +82,10 @@ impl PPPRegistry {
 
         log::debug!("Unpinning pinned roots...");
         {
-            let mut pinned_ppps = self.pinned_ppps.borrow_mut();
+            let mut pinned_ppps = self
+                .pinned_ppp_children
+                .try_lock()
+                .expect("PPPRegistry::pinned_ppp_children should not have races during GC.");
             for obj in pinned_ppps.drain(..) {
                 let unpinned = memory_manager::unpin_object::<Ruby>(obj);
                 debug_assert!(unpinned);
@@ -107,5 +97,57 @@ impl PPPRegistry {
 impl Default for PPPRegistry {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+struct PinPPPChildren {
+    ppps: Vec<ObjectReference>,
+}
+
+impl GCWork<Ruby> for PinPPPChildren {
+    fn do_work(
+        &mut self,
+        worker: &mut mmtk::scheduler::GCWorker<Ruby>,
+        _mmtk: &'static mmtk::MMTK<Ruby>,
+    ) {
+        let gc_tls = unsafe { GCThreadTLS::from_vwt_check(worker.tls) };
+        let mut ppp_children = vec![];
+        let mut newly_pinned_ppp_children = vec![];
+
+        let visit_object = |_worker, target_object: ObjectReference, pin| {
+            log::trace!(
+                "    -> {} {}",
+                if pin { "(pin)" } else { "     " },
+                target_object
+            );
+            if pin {
+                ppp_children.push(target_object);
+            }
+            target_object
+        };
+
+        gc_tls
+            .object_closure
+            .set_temporarily_and_run_code(visit_object, || {
+                for obj in self.ppps.iter().cloned() {
+                    log::trace!("  PPP: {}", obj);
+                    (upcalls().call_gc_mark_children)(obj);
+                }
+            });
+
+        for target_object in ppp_children {
+            if memory_manager::pin_object::<Ruby>(target_object) {
+                newly_pinned_ppp_children.push(target_object);
+            }
+        }
+
+        {
+            let mut pinned_ppp_children = crate::binding()
+                .ppp_registry
+                .pinned_ppp_children
+                .lock()
+                .unwrap();
+            pinned_ppp_children.append(&mut newly_pinned_ppp_children);
+        }
     }
 }

@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use mmtk::{
     scheduler::{GCWork, GCWorker, WorkBucketStage},
     util::ObjectReference,
-    vm::{ObjectModel, ObjectTracer, ObjectTracerContext},
+    vm::{ObjectModel, ObjectTracerContext},
 };
 
 use crate::{
@@ -59,64 +59,47 @@ impl WeakProcessor {
     pub fn process_weak_stuff(
         &self,
         worker: &mut GCWorker<Ruby>,
-        tracer_context: impl ObjectTracerContext<Ruby>,
+        _tracer_context: impl ObjectTracerContext<Ruby>,
     ) {
-        let gc_tls = unsafe { GCThreadTLS::from_vwt_check(worker.tls) };
-
         worker.add_work(WorkBucketStage::VMRefClosure, ProcessObjFreeCandidates);
 
-        // Enable tracer in this scope.
-        tracer_context.with_tracer(worker, |tracer| {
-            // Forward some global weak tables that needs to be handled before obj_free.
-            let forward_object = |_worker, object: ObjectReference, _pin| {
-                debug_assert!(mmtk::memory_manager::is_mmtk_object(
-                    VMObjectModel::ref_to_address(object)
-                ));
-                let result = tracer.trace_object(object);
-                trace!("Forwarding reference: {} -> {}", object, result);
-                result
-            };
+        worker.scheduler().work_buckets[WorkBucketStage::VMRefClosure].bulk_add(vec![
+            Box::new(UpdateGenericIVTbl) as _,
+            Box::new(UpdateFrozenStringsTable) as _,
+            Box::new(UpdateFinalizerTable) as _,
+            Box::new(UpdateObjToIDTbl) as _,
+            Box::new(UpdateIDToObjTbl) as _,
+            Box::new(UpdateGlobalSymbolsTable) as _,
+            Box::new(UpdateOverloadedCMETable) as _,
+        ])
+    }
 
-            gc_tls
-                .object_closure
-                .set_temporarily_and_run_code(forward_object, || {
-                    log::debug!("Updating early global weak tables...");
-                    (upcalls().update_global_weak_tables_early)();
-                    log::debug!("Finished updating early global weak tables.");
-                });
-
-            // Forward other global weak tables
-            let forward_object = |_worker, object: ObjectReference, _pin| {
-                debug_assert!(mmtk::memory_manager::is_mmtk_object(
-                    VMObjectModel::ref_to_address(object)
-                ));
-                let result = tracer.trace_object(object);
-                trace!("Forwarding reference: {} -> {}", object, result);
-                result
-            };
-
-            log::debug!("Updating global ivtbl entries...");
-            {
-                let mut moved_givtbl = crate::binding()
-                    .moved_givtbl
-                    .try_lock()
-                    .expect("Should have no race in weak_proc");
-                for (new_objref, MovedGIVTblEntry { old_objref, .. }) in moved_givtbl.drain() {
-                    trace!("  givtbl {} -> {}", old_objref, new_objref);
-                    RubyObjectAccess::from_objref(new_objref).clear_has_moved_givtbl();
-                    (upcalls().move_givtbl)(old_objref, new_objref);
-                }
+    /// Update generic instance variable tables.
+    ///
+    /// Objects moved during GC should have their entries in the global `generic_iv_tbl_` hash
+    /// table updated, and dead objects should have their entries removed.
+    fn update_generic_iv_tbl() {
+        // Update `generic_iv_tbl_` entries for moved objects.  We could update the entries in
+        // `ObjectModel::move`.  However, because `st_table` is not thread-safe, we postpone the
+        // update until now in the VMRefClosure stage.
+        log::debug!("Updating global ivtbl entries...");
+        {
+            let mut moved_givtbl = crate::binding()
+                .moved_givtbl
+                .try_lock()
+                .expect("Should have no race in weak_proc");
+            for (new_objref, MovedGIVTblEntry { old_objref, .. }) in moved_givtbl.drain() {
+                trace!("  givtbl {} -> {}", old_objref, new_objref);
+                RubyObjectAccess::from_objref(new_objref).clear_has_moved_givtbl();
+                (upcalls().move_givtbl)(old_objref, new_objref);
             }
-            log::debug!("Updated global ivtbl entries.");
+        }
+        log::debug!("Updated global ivtbl entries.");
 
-            gc_tls
-                .object_closure
-                .set_temporarily_and_run_code(forward_object, || {
-                    log::debug!("Updating global weak tables...");
-                    (upcalls().update_global_weak_tables)();
-                    log::debug!("Finished updating global weak tables.");
-                });
-        });
+        // Clean up entries for dead objects.
+        log::debug!("Cleaning up global ivtbl entries...");
+        (crate::upcalls().cleanup_generic_iv_tbl)();
+        log::debug!("Cleaning up global ivtbl entries.");
     }
 }
 
@@ -125,7 +108,8 @@ struct ProcessObjFreeCandidates;
 impl GCWork<Ruby> for ProcessObjFreeCandidates {
     fn do_work(&mut self, _worker: &mut GCWorker<Ruby>, _mmtk: &'static mmtk::MMTK<Ruby>) {
         // If it blocks, it is a bug.
-        let mut obj_free_candidates = crate::binding().weak_proc
+        let mut obj_free_candidates = crate::binding()
+            .weak_proc
             .obj_free_candidates
             .try_lock()
             .expect("It's GC time.  No mutators should hold this lock at this time.");
@@ -140,7 +124,7 @@ impl GCWork<Ruby> for ProcessObjFreeCandidates {
         for object in obj_free_candidates.iter().copied() {
             if object.is_reachable() {
                 // Forward and add back to the candidate list.
-                let new_object = object.get_forwarded_object().unwrap_or(object);
+                let new_object = object.forward();
                 trace!(
                     "Forwarding obj_free candidate: {} -> {}",
                     object,
@@ -153,5 +137,85 @@ impl GCWork<Ruby> for ProcessObjFreeCandidates {
         }
 
         *obj_free_candidates = new_candidates;
+    }
+}
+
+trait GlobalTableProcessingWork {
+    fn process_table(&mut self);
+
+    fn do_work(&mut self, worker: &mut GCWorker<Ruby>, _mmtk: &'static mmtk::MMTK<Ruby>) {
+        let gc_tls = unsafe { GCThreadTLS::from_vwt_check(worker.tls) };
+
+        // `hash_foreach_replace` depends on `gb_object_moved_p` which has to have the semantics
+        // of `trace_object` due to the way it is used in `UPDATE_IF_MOVED`.
+        let forward_object = |_worker, object: ObjectReference, _pin| {
+            debug_assert!(mmtk::memory_manager::is_mmtk_object(
+                VMObjectModel::ref_to_address(object)
+            ));
+            let result = object.forward();
+            trace!("Forwarding reference: {} -> {}", object, result);
+            result
+        };
+
+        gc_tls
+            .object_closure
+            .set_temporarily_and_run_code(forward_object, || {
+                self.process_table();
+            });
+    }
+}
+
+macro_rules! define_global_table_processor {
+    ($name: ident, $code: expr) => {
+        struct $name;
+        impl GlobalTableProcessingWork for $name {
+            fn process_table(&mut self) {
+                $code
+            }
+        }
+        impl GCWork<Ruby> for $name {
+            fn do_work(&mut self, worker: &mut GCWorker<Ruby>, mmtk: &'static mmtk::MMTK<Ruby>) {
+                GlobalTableProcessingWork::do_work(self, worker, mmtk);
+            }
+        }
+    };
+}
+
+define_global_table_processor!(UpdateGenericIVTbl, {
+    WeakProcessor::update_generic_iv_tbl();
+});
+
+define_global_table_processor!(UpdateFrozenStringsTable, {
+    (crate::upcalls().update_frozen_strings_table)()
+});
+
+define_global_table_processor!(UpdateFinalizerTable, {
+    (crate::upcalls().update_finalizer_table)()
+});
+
+define_global_table_processor!(UpdateObjToIDTbl, {
+    (crate::upcalls().update_obj_to_id_tbl)()
+});
+
+define_global_table_processor!(UpdateIDToObjTbl, {
+    (crate::upcalls().update_id_to_obj_tbl)()
+});
+
+define_global_table_processor!(UpdateGlobalSymbolsTable, {
+    (crate::upcalls().update_global_symbols_table)()
+});
+
+define_global_table_processor!(UpdateOverloadedCMETable, {
+    (crate::upcalls().update_overloaded_cme_table)()
+});
+
+// Provide a shorthand `object.forward()`.
+trait Forwardable {
+    fn forward(&self) -> Self;
+}
+
+impl Forwardable for ObjectReference {
+    fn forward(&self) -> Self {
+        self.get_forwarded_object().unwrap_or(*self)
     }
 }
