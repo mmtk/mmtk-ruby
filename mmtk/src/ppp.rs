@@ -62,13 +62,13 @@ impl PPPRegistry {
 
     pub fn cleanup_ppps(&self) {
         log::debug!("Removing dead PPPs...");
-
         {
             let mut ppps = self
                 .ppps
                 .try_lock()
                 .expect("PPPRegistry::ppps should not have races during GC.");
 
+            probe!(mmtk_ruby, remove_dead_ppps_start, ppps.len());
             ppps.retain_mut(|obj| {
                 if obj.is_live() {
                     *obj = obj.get_forwarded_object().unwrap_or(*obj);
@@ -78,18 +78,21 @@ impl PPPRegistry {
                     false
                 }
             });
+            probe!(mmtk_ruby, remove_dead_ppps_end);
         }
 
-        log::debug!("Unpinning pinned roots...");
+        log::debug!("Unpinning pinned PPP children...");
         {
             let mut pinned_ppps = self
                 .pinned_ppp_children
                 .try_lock()
                 .expect("PPPRegistry::pinned_ppp_children should not have races during GC.");
+            probe!(mmtk_ruby, unpin_ppp_children_start, pinned_ppps.len());
             for obj in pinned_ppps.drain(..) {
                 let unpinned = memory_manager::unpin_object::<Ruby>(obj);
                 debug_assert!(unpinned);
             }
+            probe!(mmtk_ruby, unpin_ppp_children_end);
         }
     }
 }

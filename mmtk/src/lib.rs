@@ -2,6 +2,8 @@ extern crate libc;
 extern crate mmtk;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate probe;
 
 use std::collections::HashSet;
 use std::panic::PanicInfo;
