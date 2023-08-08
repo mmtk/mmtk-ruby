@@ -1,10 +1,10 @@
 use crate::abi::GCThreadTLS;
 
 use crate::{mmtk, upcalls, Ruby};
+use mmtk::memory_manager;
 use mmtk::scheduler::*;
 use mmtk::util::{VMMutatorThread, VMThread, VMWorkerThread};
 use mmtk::vm::{Collection, GCThreadContext};
-use mmtk::{memory_manager, MutatorContext};
 use std::thread;
 
 pub struct VMCollection {}
@@ -75,14 +75,6 @@ impl Collection<Ruby> for VMCollection {
                     .unwrap();
             }
         }
-    }
-
-    fn prepare_mutator<T: MutatorContext<Ruby>>(
-        _tls_worker: VMWorkerThread,
-        _tls_mutator: VMMutatorThread,
-        _m: &T,
-    ) {
-        // do nothing
     }
 
     fn vm_live_bytes() -> usize {

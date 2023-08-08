@@ -9,8 +9,6 @@ use mmtk::{memory_manager, Mutator, MutatorContext};
 pub struct VMScanning {}
 
 impl Scanning<Ruby> for VMScanning {
-    const SINGLE_THREAD_MUTATOR_SCANNING: bool = false;
-
     fn support_edge_enqueuing(_tls: VMWorkerThread, _object: ObjectReference) -> bool {
         false
     }
@@ -55,13 +53,6 @@ impl Scanning<Ruby> for VMScanning {
 
     fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {
         // Do nothing
-    }
-
-    fn scan_roots_in_all_mutator_threads(
-        _tls: VMWorkerThread,
-        _factory: impl RootsWorkFactory<RubyEdge>,
-    ) {
-        unreachable!();
     }
 
     fn scan_roots_in_mutator_thread(
