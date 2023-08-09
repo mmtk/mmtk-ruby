@@ -148,9 +148,11 @@ trait GlobalTableProcessingWork {
         // `hash_foreach_replace` depends on `gb_object_moved_p` which has to have the semantics
         // of `trace_object` due to the way it is used in `UPDATE_IF_MOVED`.
         let forward_object = |_worker, object: ObjectReference, _pin| {
-            debug_assert!(mmtk::memory_manager::is_mmtk_object(
-                VMObjectModel::ref_to_address(object)
-            ), "{} is not an MMTk object", object);
+            debug_assert!(
+                mmtk::memory_manager::is_mmtk_object(VMObjectModel::ref_to_address(object)),
+                "{} is not an MMTk object",
+                object
+            );
             let result = object.forward();
             trace!("Forwarding reference: {} -> {}", object, result);
             result

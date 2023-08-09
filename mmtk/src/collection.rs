@@ -1,21 +1,26 @@
 use crate::abi::GCThreadTLS;
 
+use crate::api::RubyMutator;
 use crate::{mmtk, upcalls, Ruby};
+use mmtk::memory_manager;
 use mmtk::scheduler::*;
 use mmtk::util::{VMMutatorThread, VMThread, VMWorkerThread};
 use mmtk::vm::{Collection, GCThreadContext};
-use mmtk::{memory_manager, MutatorContext};
 use std::thread;
 
 pub struct VMCollection {}
 
 impl Collection<Ruby> for VMCollection {
-    fn stop_all_mutators<F>(tls: VMWorkerThread, _mutator_visitor: F)
+    fn stop_all_mutators<F>(tls: VMWorkerThread, mut mutator_visitor: F)
     where
         F: FnMut(&'static mut mmtk::Mutator<Ruby>),
     {
         (upcalls().stop_the_world)(tls);
         crate::binding().ppp_registry.pin_ppp_children(tls);
+        (upcalls().get_mutators)(
+            Self::notify_mutator_ready::<F>,
+            &mut mutator_visitor as *mut F as *mut _,
+        );
     }
 
     fn resume_mutators(tls: VMWorkerThread) {
@@ -77,15 +82,18 @@ impl Collection<Ruby> for VMCollection {
         }
     }
 
-    fn prepare_mutator<T: MutatorContext<Ruby>>(
-        _tls_worker: VMWorkerThread,
-        _tls_mutator: VMMutatorThread,
-        _m: &T,
-    ) {
-        // do nothing
-    }
-
     fn vm_live_bytes() -> usize {
         (upcalls().vm_live_bytes)()
+    }
+}
+
+impl VMCollection {
+    extern "C" fn notify_mutator_ready<F>(mutator_ptr: *mut RubyMutator, data: *mut libc::c_void)
+    where
+        F: FnMut(&'static mut mmtk::Mutator<Ruby>),
+    {
+        let mutator = unsafe { &mut *mutator_ptr };
+        let mutator_visitor = unsafe { &mut *(data as *mut F) };
+        mutator_visitor(mutator);
     }
 }
