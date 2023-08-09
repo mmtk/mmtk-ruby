@@ -62,7 +62,7 @@ impl Scanning<Ruby> for VMScanning {
     ) {
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
         Self::collect_object_roots_in("scan_thread_root", gc_tls, &mut factory, || {
-            (upcalls().scan_thread_root)(mutator.get_tls(), tls);
+            (upcalls().scan_roots_in_mutator_thread)(mutator.get_tls(), tls);
         });
     }
 
