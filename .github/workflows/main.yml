@@ -1,0 +1,64 @@
+name: "Continuous Integration"
+
+on:
+  pull_request:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  style-check:
+    name: Style check
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: true
+    steps:
+      - name: Checkout MMTk Ruby binding
+        uses: actions/checkout@v3
+        with:
+          path: ./git/mmtk-ruby
+      - name: Setup environment
+        run: ./.github/scripts/setup.sh
+        working-directory: ./git/mmtk-openjdk
+      - name: Style checks
+        run: ./.github/scripts/style-check.sh
+        working-directory: ./git/mmtk-openjdk
+
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: true
+      matrix:
+        debug-level: ["debug", "release"]
+    steps:
+      - name: Checkout MMTk Ruby binding
+        uses: actions/checkout@v3
+        with:
+          path: ./git/mmtk-ruby
+
+      - name: Checkout Ruby
+        uses: actions/checkout@v3
+        with:
+          repository: mmtk/ruby
+          path: ./git/ruby
+          ref: mmtk
+
+      - name: Setup environment
+        run: ./.github/scripts/ci-setup.sh
+        working-directory: ./git/mmtk-ruby
+
+      - name: Build MMTk Ruby ${{ matrix.debug-level }}
+        run: DEBUG_LEVEL=${{ matrix.debug-level }} ./.github/scripts/ci-build.sh
+        working-directory: ./git/mmtk-ruby
+
+      - name: Run bootstrap tests (btest)
+        run: ./.github/scripts/ci-btest.sh
+        working-directory: ./git/mmtk-ruby
+
+      - name: Run all tests (test-all)
+        run: ./.github/scripts/ci-test-all.sh
+        working-directory: ./git/mmtk-ruby
