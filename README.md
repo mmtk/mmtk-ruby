@@ -215,13 +215,20 @@ make btest RUN_OPTS="--mmtk-plan=Immix"
 ### All tests
 
 Note that currently it is not our priority to support Ractor.  Some tests
-involving Ractors are not enabled.  You can get a list of enabled tests at:
-https://github.com/Shopify/ruby-mmtk-builder/blob/main/mmtk_tests.txt
+involving Ractors are not enabled.  You can get a list of enabled tests in the
+file `ruby-test-cases.txt`.
 
 To run the tests
 
 ```
-for test_case in $(grep -v "#" /path/to/mmtk_tests.txt); do
+make test-all TESTS=$(grep -v '#' /path/to/mmtk-ruby/ruby-test-cases.txt | xargs) RUN_OPTS="--mmtk-plan=Immix"
+```
+
+Or run them individually
+
+```
+for test_case in $(grep -v "#" /path/to/mmtk-ruby/ruby-test-cases.txt); do
+    cowsay $test_case
     make test-all TESTS=$test_case RUN_OPTS="--mmtk-plan=Immix"
 done
 ```
