@@ -13,6 +13,8 @@ use crate::mmtk;
 use crate::Ruby;
 use mmtk::memory_manager;
 use mmtk::memory_manager::mmtk_init;
+use mmtk::util::alloc::AllocatorInfo;
+use mmtk::util::alloc::AllocatorSelector;
 use mmtk::util::constants::MIN_OBJECT_SIZE;
 use mmtk::util::options::GCTriggerSelector;
 use mmtk::util::options::PlanSelector;
@@ -280,4 +282,14 @@ pub extern "C" fn mmtk_get_vo_bit_base() -> usize {
 #[no_mangle]
 pub extern "C" fn mmtk_gc_poll(tls: VMMutatorThread) {
     mmtk::memory_manager::gc_poll(mmtk(), tls)
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_get_immix_bump_ptr_offset() -> usize {
+    let AllocatorInfo::BumpPointer {
+        bump_pointer_offset,
+    } = AllocatorInfo::new::<Ruby>(AllocatorSelector::Immix(0)) else {
+        panic!("Expected BumpPointer");
+    };
+    bump_pointer_offset
 }
