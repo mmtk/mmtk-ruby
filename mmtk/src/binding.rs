@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use libc::c_void;
 use mmtk::util::ObjectReference;
-use mmtk::{memory_manager, MMTK};
+use mmtk::MMTK;
 
 use crate::abi;
 use crate::abi::RubyBindingOptions;
@@ -35,7 +35,6 @@ pub struct RubyBinding {
     pub plan_name: Mutex<Option<CString>>,
     pub weak_proc: WeakProcessor,
     pub ppp_registry: PPPRegistry,
-    pub(crate) pinned_roots: Mutex<Vec<ObjectReference>>,
     pub(crate) moved_givtbl: Mutex<HashMap<ObjectReference, MovedGIVTblEntry>>,
 }
 
@@ -58,7 +57,6 @@ impl RubyBinding {
             plan_name: Mutex::new(None),
             weak_proc: WeakProcessor::new(),
             ppp_registry: PPPRegistry::new(),
-            pinned_roots: Default::default(),
             moved_givtbl: Default::default(),
         }
     }
@@ -76,17 +74,5 @@ impl RubyBinding {
             *plan_name = Some(c_string);
         }
         plan_name.as_deref().unwrap().as_ptr()
-    }
-
-    pub(crate) fn unpin_pinned_roots(&self) {
-        let mut pinned_roots = self
-            .pinned_roots
-            .try_lock()
-            .expect("It is accessed during weak ref processing. Should have no race.");
-
-        for object in pinned_roots.drain(..) {
-            let result = memory_manager::unpin_object::<Ruby>(object);
-            debug_assert!(result);
-        }
     }
 }

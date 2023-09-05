@@ -4,7 +4,7 @@ use crate::{upcalls, Ruby, RubyEdge};
 use mmtk::scheduler::GCWorker;
 use mmtk::util::{ObjectReference, VMWorkerThread};
 use mmtk::vm::{EdgeVisitor, ObjectTracer, RootsWorkFactory, Scanning};
-use mmtk::{memory_manager, Mutator, MutatorContext};
+use mmtk::{Mutator, MutatorContext};
 
 pub struct VMScanning {}
 
@@ -89,7 +89,6 @@ impl Scanning<Ruby> for VMScanning {
             .weak_proc
             .process_weak_stuff(worker, tracer_context);
         crate::binding().ppp_registry.cleanup_ppps();
-        crate::binding().unpin_pinned_roots();
         false
     }
 
@@ -111,7 +110,6 @@ impl VMScanning {
         callback: F,
     ) {
         let mut buffer: Vec<ObjectReference> = Vec::new();
-        let mut my_pinned_roots = vec![];
         let visit_object = |_, object: ObjectReference, pin| {
             debug!(
                 "[{}] Visiting object: {}{}",
@@ -123,12 +121,9 @@ impl VMScanning {
                     "(movable, but we pin it anyway)"
                 }
             );
-            if memory_manager::pin_object::<Ruby>(object) {
-                my_pinned_roots.push(object);
-            }
             buffer.push(object);
             if buffer.len() >= Self::OBJECT_BUFFER_SIZE {
-                factory.create_process_node_roots_work(std::mem::take(&mut buffer));
+                factory.create_process_pinning_roots_work(std::mem::take(&mut buffer));
             }
             object
         };
@@ -137,18 +132,7 @@ impl VMScanning {
             .set_temporarily_and_run_code(visit_object, callback);
 
         if !buffer.is_empty() {
-            factory.create_process_node_roots_work(buffer);
-        }
-
-        debug!(
-            "Pinned {} node roots during {}",
-            my_pinned_roots.len(),
-            root_scan_kind
-        );
-
-        {
-            let mut pinned_roots = crate::binding().pinned_roots.lock().unwrap();
-            pinned_roots.append(&mut my_pinned_roots);
+            factory.create_process_pinning_roots_work(buffer);
         }
     }
 }
