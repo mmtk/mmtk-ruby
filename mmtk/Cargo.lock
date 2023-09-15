@@ -187,22 +187,22 @@ checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
 
 [[package]]
 name = "enum-map"
-version = "2.6.1"
+version = "2.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9705d8de4776df900a4a0b2384f8b0ab42f775e93b083b42f8ce71bdc32a47e3"
+checksum = "c188012f8542dee7b3996e44dd89461d64aa471b0a7c71a1ae2f595d259e96e5"
 dependencies = [
  "enum-map-derive",
 ]
 
 [[package]]
 name = "enum-map-derive"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccb14d927583dd5c2eac0f2cf264fc4762aefe1ae14c47a8a20fc1939d3a5fc0"
+checksum = "04d0b288e3bb1d861c4403c1774a6f7a798781dfc519b3647df2a3dd4ae95f25"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.31",
+ "syn 2.0.33",
 ]
 
 [[package]]
@@ -326,9 +326,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.147"
+version = "0.2.148"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4668fb0ea861c1df094127ac5f1da3409a82116a4ba74fca2e58ef927159bb3"
+checksum = "9cdc71e17332e86d2e1d38c1f99edcb6288ee11b815fb1a4b049eaa2114d369b"
 
 [[package]]
 name = "libgit2-sys"
@@ -356,9 +356,9 @@ dependencies = [
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.4.5"
+version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57bcfdad1b858c2db7c38303a6d2ad4dfaf5eb53dfeb0910128b2c26d6158503"
+checksum = "1a9bad9f94746442c783ca431b22403b519cd7fbeed0533fdd6328b2f2212128"
 
 [[package]]
 name = "lock_api"
@@ -394,7 +394,7 @@ dependencies = [
 [[package]]
 name = "mmtk"
 version = "0.19.0"
-source = "git+https://github.com/udesou/mmtk-core?branch=feature/rb-roots#4773952883f8b27f68272d48427f927b22aa98eb"
+source = "git+https://github.com/mmtk/mmtk-core.git#14a26b1b120e932c653959e8cbc8e8406b74474a"
 dependencies = [
  "atomic",
  "atomic-traits",
@@ -415,7 +415,8 @@ dependencies = [
  "mmtk-macros",
  "num-traits",
  "num_cpus",
- "probe 0.5.1",
+ "portable-atomic",
+ "probe",
  "regex",
  "spin",
  "static_assertions",
@@ -427,12 +428,12 @@ dependencies = [
 [[package]]
 name = "mmtk-macros"
 version = "0.19.0"
-source = "git+https://github.com/udesou/mmtk-core?branch=feature/rb-roots#4773952883f8b27f68272d48427f927b22aa98eb"
+source = "git+https://github.com/mmtk/mmtk-core.git#14a26b1b120e932c653959e8cbc8e8406b74474a"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
  "quote",
- "syn 2.0.31",
+ "syn 2.0.33",
 ]
 
 [[package]]
@@ -446,7 +447,7 @@ dependencies = [
  "log",
  "mmtk",
  "once_cell",
- "probe 0.3.0",
+ "probe",
 ]
 
 [[package]]
@@ -507,10 +508,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26072860ba924cbfa98ea39c8c19b4dd6a4a25423dbdf219c1eca91aa0cf6964"
 
 [[package]]
-name = "probe"
-version = "0.3.0"
+name = "portable-atomic"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "216e81fcf486280f0b8b18ca43ceafd32739eb0eb703eb024a8d00814eeba556"
+checksum = "31114a898e107c51bb1609ffaf55a0e011cf6a4d7f1170d0015a165082c0338b"
 
 [[package]]
 name = "probe"
@@ -544,9 +545,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.66"
+version = "1.0.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18fb31db3f9bddb2ea821cde30a9f70117e3f119938b5ee630b7403aa6e2ead9"
+checksum = "3d433d9f1a3e8c1263d9456598b16fec66f4acc9a74dacffd35c7bb09b3a1328"
 dependencies = [
  "unicode-ident",
 ]
@@ -622,9 +623,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.38.11"
+version = "0.38.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0c3dde1fc030af041adc40e79c0e7fbcf431dd24870053d187d7c66e4b87453"
+checksum = "d7db8590df6dfcd144d22afd1b83b36c21a18d7cbc1dc4bb5295a8712e9eb662"
 dependencies = [
  "bitflags 2.4.0",
  "errno",
@@ -689,7 +690,7 @@ checksum = "4eca7ac642d82aa35b60049a6eccb4be6be75e599bd2e9adb5f875a737654af2"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.31",
+ "syn 2.0.33",
 ]
 
 [[package]]
@@ -739,9 +740,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.31"
+version = "2.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "718fa2415bcb8d8bd775917a1bf12a7931b6dfa890753378538118181e0cb398"
+checksum = "9caece70c63bfba29ec2fed841a09851b14a235c60010fa4de58089b6c025668"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -750,9 +751,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.29.9"
+version = "0.29.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8d0e9cc2273cc8d31377bdd638d72e3ac3e5607b18621062b169d02787f1bab"
+checksum = "0a18d114d420ada3a891e6bc8e96a2023402203296a47cdd65083377dad18ba5"
 dependencies = [
  "cfg-if",
  "core-foundation-sys",
@@ -789,7 +790,7 @@ checksum = "49922ecae66cc8a249b77e68d1d0623c1b2c514f0060c27cdc68bd62a1219d35"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.31",
+ "syn 2.0.33",
 ]
 
 [[package]]
@@ -830,9 +831,9 @@ checksum = "92888ba5573ff080736b3648696b70cafad7d250551175acbaa4e0385b3e1460"
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.11"
+version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "301abaae475aa91687eb82514b328ab47a211a533026cb25fc3e519b86adfc3c"
+checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
 
 [[package]]
 name = "unicode-normalization"
