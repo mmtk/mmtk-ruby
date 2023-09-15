@@ -12,7 +12,7 @@ edition = "2021"
 # Metadata for the Ruby repository
 [package.metadata.ci-repos.ruby]
 repo = "https://github.com/mmtk/ruby.git"
-rev = "253cbe4495a72211ebc8a1514f0f6eaa2a5dab4b"
+rev = "95a8128615aec2ae9f848a9df7b724e810670321" # a previous revision.  For testing, only.
 
 [lib]
 name = "mmtk_ruby"
