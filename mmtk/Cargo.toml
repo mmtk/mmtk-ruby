@@ -9,6 +9,11 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+# Metadata for the Ruby repository
+[package.metadata.ci-repos.ruby]
+repo = "https://github.com/mmtk/ruby.git"
+rev = "253cbe4495a72211ebc8a1514f0f6eaa2a5dab4b"
+
 [lib]
 name = "mmtk_ruby"
 # be careful - Link-Time Optimisation (LTO) is only allowed for certain crate types
