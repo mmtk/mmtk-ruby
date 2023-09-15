@@ -38,7 +38,7 @@ jobs:
       DEBUG_LEVEL: ${{ matrix.debug-level }}
     steps:
       - name: Checkout MMTk Ruby binding
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: ./git/mmtk-ruby
 
@@ -54,7 +54,7 @@ jobs:
         working-directory: ./git/mmtk-ruby
 
       - name: Checkout Ruby
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ steps.extract-ruby-revision.outputs.ruby_repo }}
           ref: ${{ steps.extract-ruby-revision.outputs.ruby_rev }}
