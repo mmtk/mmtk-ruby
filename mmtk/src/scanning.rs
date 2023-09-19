@@ -1,8 +1,16 @@
 use crate::abi::GCThreadTLS;
 
+use crate::cruby_support::cruby::{
+    rb_shape_obj_too_complex, RUBY_FL_EXIVAR, RUBY_T_ARRAY, RUBY_T_BIGNUM, RUBY_T_FLOAT,
+    RUBY_T_OBJECT, RUBY_T_STRING, RUBY_T_SYMBOL, SIZEOF_VALUE, VALUE,
+};
+use crate::cruby_support::cruby_extra::{
+    my_special_const_p, rarray_embed_ary_addr, rarray_embed_len, robject_embed_ary_addr,
+};
+use crate::cruby_support::flag_tests;
 use crate::{upcalls, Ruby, RubyEdge};
 use mmtk::scheduler::GCWorker;
-use mmtk::util::{ObjectReference, VMWorkerThread};
+use mmtk::util::{Address, ObjectReference, VMWorkerThread};
 use mmtk::vm::{EdgeVisitor, ObjectTracer, RootsWorkFactory, Scanning};
 use mmtk::{Mutator, MutatorContext};
 
@@ -30,6 +38,11 @@ impl Scanning<Ruby> for VMScanning {
             mmtk::memory_manager::is_mmtk_object(object.to_raw_address()),
             "Not an MMTk object: {object}",
         );
+
+        if Self::scan_object_and_trace_edges_fast(tls, object, object_tracer) {
+            return;
+        }
+
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
         let visit_object = |_worker, target_object: ObjectReference, pin| {
             trace!(
@@ -133,6 +146,109 @@ impl VMScanning {
 
         if !buffer.is_empty() {
             factory.create_process_pinning_roots_work(buffer);
+        }
+    }
+
+    /// Scan `object` in Rust.  This function shall handle the most common cases in Rust, but does
+    /// not have to handle all types or all cases (not embedded, shared, etc.).
+    ///
+    /// Return `true` if the object has been scanned.
+    /// Return `false` to fall back to the slow path in C.
+    fn scan_object_and_trace_edges_fast<OT: ObjectTracer>(
+        tls: VMWorkerThread,
+        object: ObjectReference,
+        object_tracer: &mut OT,
+    ) -> bool {
+        return false;
+        let ruby_value = VALUE::from(object);
+        let ruby_flags = ruby_value.builtin_flags();
+        let ruby_type = ruby_value.builtin_type();
+
+        if flag_tests::robject_has_exivar(ruby_flags) {
+            // Handle objects with generic ivars in C.
+            return false;
+        }
+
+        match ruby_type {
+            RUBY_T_FLOAT | RUBY_T_BIGNUM | RUBY_T_SYMBOL => {
+                // Those objects have no children.
+                return true;
+            }
+
+            RUBY_T_OBJECT => {
+                if unsafe { rb_shape_obj_too_complex(ruby_value) } {
+                    // Too complex.  Fall back to C.
+                    return false;
+                }
+
+                if flag_tests::robject_is_embedded(ruby_flags) {
+                    return false;
+                    // // Scan the embedded parts of the object.
+                    // let payload_addr = robject_embed_ary_addr(ruby_value);
+                    // let
+                    // Self::scan_and_trace_array_slice(tls, object, payload_addr, len, object_tracer);
+                    return true;
+                }
+
+                // Off-load other cases to C.
+                return false;
+            }
+            RUBY_T_STRING => {
+                return false;
+                // Match the semantics of `gc_ref_update_string` in C.
+
+                if flag_tests::robject_is_embedded(ruby_flags) {
+                    // Embedded strings don't have children.
+                    return true;
+                }
+                if flag_tests::string_no_free(ruby_flags) {
+                    // If the string has "no free" flag, skip it.
+                    return true;
+                }
+
+                // Off-load other cases to C.
+                return false;
+            }
+            RUBY_T_ARRAY => {
+                return false;
+                // Match the semantics of `gc_ref_update_array` in C.
+
+                if flag_tests::robject_is_embedded(ruby_flags) {
+                    // Scan the embedded parts of the array.
+                    let payload_addr = rarray_embed_ary_addr(ruby_value);
+                    let len = rarray_embed_len(ruby_flags);
+                    Self::scan_and_trace_array_slice(tls, object, payload_addr, len, object_tracer);
+                    return true;
+                }
+
+                // Off-load other cases to C.
+                return false;
+            }
+            _ => {
+                // For all other types, fall back to C.
+                return false;
+            }
+        };
+    }
+
+    fn scan_and_trace_array_slice<OT: ObjectTracer>(
+        _tls: VMWorkerThread,
+        _object: ObjectReference,
+        array_begin: Address,
+        array_len: usize,
+        object_tracer: &mut OT,
+    ) {
+        for index in 0..array_len {
+            let elem_addr = array_begin.add(index * SIZEOF_VALUE);
+            let elem = unsafe { elem_addr.load::<usize>() };
+            let ruby_value = VALUE(elem);
+            if !my_special_const_p(ruby_value) {
+                let objref = ObjectReference::from(ruby_value);
+                let new_objref = object_tracer.trace_object(objref);
+                if new_objref != objref {
+                    unsafe { elem_addr.store(new_objref) }
+                }
+            }
         }
     }
 }
