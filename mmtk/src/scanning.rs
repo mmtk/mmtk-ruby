@@ -2,7 +2,7 @@ use crate::abi::GCThreadTLS;
 
 use crate::cruby_support::cruby::{
     rb_shape_obj_too_complex, RUBY_FL_EXIVAR, RUBY_T_ARRAY, RUBY_T_BIGNUM, RUBY_T_FLOAT,
-    RUBY_T_OBJECT, RUBY_T_STRING, RUBY_T_SYMBOL, SIZEOF_VALUE, VALUE,
+    RUBY_T_IMEMO, RUBY_T_OBJECT, RUBY_T_STRING, RUBY_T_SYMBOL, SIZEOF_VALUE, VALUE,
 };
 use crate::cruby_support::cruby_extra::{
     my_special_const_p, rarray_embed_ary_addr, rarray_embed_len, robject_embed_ary_addr,
@@ -39,7 +39,7 @@ impl Scanning<Ruby> for VMScanning {
             "Not an MMTk object: {object}",
         );
 
-        if Self::scan_object_and_trace_edges_fast(tls, object, object_tracer) {
+        if Self::scan_object_and_trace_edges_fast(object, object_tracer) {
             return;
         }
 
@@ -155,11 +155,9 @@ impl VMScanning {
     /// Return `true` if the object has been scanned.
     /// Return `false` to fall back to the slow path in C.
     fn scan_object_and_trace_edges_fast<OT: ObjectTracer>(
-        tls: VMWorkerThread,
         object: ObjectReference,
         object_tracer: &mut OT,
     ) -> bool {
-        return false;
         let ruby_value = VALUE::from(object);
         let ruby_flags = ruby_value.builtin_flags();
         let ruby_type = ruby_value.builtin_type();
@@ -175,6 +173,40 @@ impl VMScanning {
                 return true;
             }
 
+            RUBY_T_IMEMO => {
+                // TODO: Some IMemos really should be handled in Rust.
+                return false;
+            }
+
+            _ => {
+                let handled = Self::scan_and_trace_common(
+                    object,
+                    ruby_value,
+                    ruby_flags,
+                    ruby_type,
+                    object_tracer,
+                );
+                if handled {
+                    let ptr_basic = ruby_value.as_basic();
+                    let klass = unsafe { (*ptr_basic).klass };
+                    let new_klass = VALUE::from(object_tracer.trace_object(klass.into()));
+                    if new_klass != klass {
+                        unsafe { (*ptr_basic).klass = new_klass }
+                    }
+                }
+                handled
+            }
+        }
+    }
+
+    fn scan_and_trace_common<OT: ObjectTracer>(
+        _object: ObjectReference,
+        ruby_value: VALUE,
+        ruby_flags: usize,
+        ruby_type: u32,
+        object_tracer: &mut OT,
+    ) -> bool {
+        match ruby_type {
             RUBY_T_OBJECT => {
                 if unsafe { rb_shape_obj_too_complex(ruby_value) } {
                     // Too complex.  Fall back to C.
@@ -194,14 +226,13 @@ impl VMScanning {
                 return false;
             }
             RUBY_T_STRING => {
-                return false;
                 // Match the semantics of `gc_ref_update_string` in C.
 
-                if flag_tests::robject_is_embedded(ruby_flags) {
+                if flag_tests::rstring_is_embedded(ruby_flags) {
                     // Embedded strings don't have children.
                     return true;
                 }
-                if flag_tests::string_no_free(ruby_flags) {
+                if flag_tests::rstring_no_free(ruby_flags) {
                     // If the string has "no free" flag, skip it.
                     return true;
                 }
@@ -210,14 +241,13 @@ impl VMScanning {
                 return false;
             }
             RUBY_T_ARRAY => {
-                return false;
                 // Match the semantics of `gc_ref_update_array` in C.
 
-                if flag_tests::robject_is_embedded(ruby_flags) {
+                if flag_tests::rarray_is_embedded(ruby_flags) {
                     // Scan the embedded parts of the array.
                     let payload_addr = rarray_embed_ary_addr(ruby_value);
                     let len = rarray_embed_len(ruby_flags);
-                    Self::scan_and_trace_array_slice(tls, object, payload_addr, len, object_tracer);
+                    Self::scan_and_trace_array_slice(payload_addr, len, object_tracer);
                     return true;
                 }
 
@@ -232,8 +262,6 @@ impl VMScanning {
     }
 
     fn scan_and_trace_array_slice<OT: ObjectTracer>(
-        _tls: VMWorkerThread,
-        _object: ObjectReference,
         array_begin: Address,
         array_len: usize,
         object_tracer: &mut OT,

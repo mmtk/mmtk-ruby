@@ -8,7 +8,7 @@ use mmtk::util::Address;
 use super::cruby::{
     RUBY_Qfalse, RARRAY_EMBED_LEN_MASK, RARRAY_EMBED_LEN_SHIFT, RUBY_FL_USER1, RUBY_FL_USER18,
     RUBY_FL_USER2, RUBY_IMMEDIATE_MASK, RUBY_OFFSET_RARRAY_AS_ARY, RUBY_OFFSET_RARRAY_AS_HEAP_LEN,
-    VALUE,
+    VALUE, RBasic,
 };
 
 pub const RUBY_OFFSET_ROBJECT_AS_ARY: i32 = 32; // struct RObject, subfield "as.ary"
@@ -16,6 +16,14 @@ pub const RUBY_OFFSET_ROBJECT_AS_ARY: i32 = 32; // struct RObject, subfield "as.
 pub const STR_NO_EMBED: usize = RUBY_FL_USER1 as usize;
 pub const STR_SHARED: usize = RUBY_FL_USER2 as usize;
 pub const STR_NOFREE: usize = RUBY_FL_USER18 as usize;
+
+impl VALUE {
+    pub fn as_basic(self) -> *mut RBasic {
+        let VALUE(cval) = self;
+        let rbasic_ptr = cval as *mut RBasic;
+        rbasic_ptr
+    }
+}
 
 pub fn my_special_const_p(value: VALUE) -> bool {
     // This follows the implementation in C.
