@@ -44,3 +44,7 @@ default = ["clear_old_copy"]
 
 # When moving an object, clear its original copy.
 clear_old_copy = []
+
+# Add a env var switch to enable/disable object scanning fast paths.
+# For debug only.
+env_var_fast_path_switch = []

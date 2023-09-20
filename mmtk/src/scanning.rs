@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicBool;
+
 use crate::abi::GCThreadTLS;
 
 use crate::cruby_support::cruby::{
@@ -39,8 +41,16 @@ impl Scanning<Ruby> for VMScanning {
             "Not an MMTk object: {object}",
         );
 
-        if Self::scan_object_and_trace_edges_fast(object, object_tracer) {
-            return;
+        let allow_fast_paths = if cfg!(feature = "env_var_fast_path_switch") {
+            USE_FAST_PATHS.load(std::sync::atomic::Ordering::Relaxed)
+        } else {
+            true
+        };
+
+        if allow_fast_paths {
+            if Self::scan_object_and_trace_edges_fast(object, object_tracer) {
+                return;
+            }
         }
 
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
@@ -112,6 +122,8 @@ impl Scanning<Ruby> for VMScanning {
         panic!("We can't use MarkCompact in Ruby.");
     }
 }
+
+pub(crate) static USE_FAST_PATHS: AtomicBool = AtomicBool::new(false);
 
 impl VMScanning {
     const OBJECT_BUFFER_SIZE: usize = 4096;

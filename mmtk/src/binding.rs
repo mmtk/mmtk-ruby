@@ -6,11 +6,11 @@ use libc::c_void;
 use mmtk::util::ObjectReference;
 use mmtk::MMTK;
 
-use crate::abi;
 use crate::abi::RubyBindingOptions;
 use crate::ppp::PPPRegistry;
 use crate::weak_proc::WeakProcessor;
 use crate::Ruby;
+use crate::{abi, scanning};
 
 #[derive(Default)]
 pub struct RubyBindingFast {
@@ -50,6 +50,23 @@ impl RubyBinding {
         unsafe {
             crate::BINDING_FAST.suffix_size = binding_options.suffix_size;
         }
+
+        if cfg!(feature = "env_var_fast_path_switch") {
+            if let Ok(s) = std::env::var("RUBY_MMTK_USE_FAST_PATHS") {
+                if let Ok(num) = s.parse::<usize>() {
+                    if num == 1 {
+                        scanning::USE_FAST_PATHS.store(true, std::sync::atomic::Ordering::Relaxed);
+                    }
+                }
+            }
+
+            if scanning::USE_FAST_PATHS.load(std::sync::atomic::Ordering::Relaxed) {
+                eprintln!("Using fast paths.");
+            } else {
+                eprintln!("Using slow paths, only.");
+            }
+        }
+
         Self {
             mmtk,
             options: binding_options.clone(),
