@@ -48,3 +48,6 @@ clear_old_copy = []
 # Add a env var switch to enable/disable object scanning fast paths.
 # For debug only.
 env_var_fast_path_switch = []
+
+# Enable this to count how many time the fast paths are taken.
+fast_paths_stats = []

@@ -21,9 +21,13 @@ impl Collection<Ruby> for VMCollection {
             Self::notify_mutator_ready::<F>,
             &mut mutator_visitor as *mut F as *mut _,
         );
+
+        crate::scanning::fast_paths_stats::reset();
     }
 
     fn resume_mutators(tls: VMWorkerThread) {
+        crate::scanning::fast_paths_stats::report();
+
         (upcalls().resume_mutators)(tls);
     }
 

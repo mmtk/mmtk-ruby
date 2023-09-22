@@ -47,8 +47,12 @@ impl Scanning<Ruby> for VMScanning {
             true
         };
 
+        fast_paths_stats::object_scanned();
+
         if allow_fast_paths {
-            if Self::scan_object_and_trace_edges_fast(object, object_tracer) {
+            let fast_path_taken = Self::scan_object_and_trace_edges_fast(object, object_tracer);
+            if fast_path_taken {
+                fast_paths_stats::fast_path_taken();
                 return;
             }
         }
@@ -302,5 +306,35 @@ impl VMScanning {
                 }
             }
         }
+    }
+}
+
+pub(crate) mod fast_paths_stats {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    pub static OBJECTS_SCANNED: AtomicUsize = AtomicUsize::new(0);
+    pub static FAST_PATHS_TAKEN: AtomicUsize = AtomicUsize::new(0);
+
+    pub fn reset() {
+        OBJECTS_SCANNED.store(0, Ordering::SeqCst);
+        FAST_PATHS_TAKEN.store(0, Ordering::SeqCst);
+    }
+
+    pub fn report() {
+        let objects_scanned = OBJECTS_SCANNED.load(Ordering::SeqCst);
+        let fast_paths_taken = FAST_PATHS_TAKEN.load(Ordering::SeqCst);
+
+        eprintln!(
+            "Objects scanned: {}, fast paths taken: {}",
+            objects_scanned, fast_paths_taken,
+        );
+    }
+
+    pub fn object_scanned() {
+        OBJECTS_SCANNED.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn fast_path_taken() {
+        FAST_PATHS_TAKEN.fetch_add(1, Ordering::Relaxed);
     }
 }
