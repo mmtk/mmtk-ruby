@@ -56,7 +56,7 @@ impl Scanning<Ruby> for VMScanning {
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
         let visit_object = |_worker, target_object: ObjectReference, pin| {
             trace!(
-                "Tracing object: {} -> {}{}",
+                "Tracing edge: {} -> {}{}",
                 object,
                 target_object,
                 if pin { " pin" } else { "" }
@@ -65,7 +65,15 @@ impl Scanning<Ruby> for VMScanning {
                 mmtk::memory_manager::is_mmtk_object(target_object.to_raw_address()),
                 "Destination is not an MMTk object. Src: {object} dst: {target_object}"
             );
-            object_tracer.trace_object(target_object)
+            let forwarded_target = object_tracer.trace_object(target_object);
+            if forwarded_target != target_object {
+                trace!(
+                    "  Forwarded target {} -> {}",
+                    target_object,
+                    forwarded_target
+                );
+            }
+            forwarded_target
         };
         gc_tls
             .object_closure
@@ -145,6 +153,10 @@ impl VMScanning {
                 } else {
                     "(movable, but we pin it anyway)"
                 }
+            );
+            debug_assert!(
+                mmtk::memory_manager::is_mmtk_object(object.to_raw_address()),
+                "Root does not point to MMTk object.  object: {object}"
             );
             buffer.push(object);
             if buffer.len() >= Self::OBJECT_BUFFER_SIZE {
