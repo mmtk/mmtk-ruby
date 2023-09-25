@@ -22,11 +22,15 @@ impl Collection<Ruby> for VMCollection {
             &mut mutator_visitor as *mut F as *mut _,
         );
 
-        crate::scanning::fast_paths_stats::reset();
+        if cfg!(feature = "fast_paths_stats") {
+            crate::scanning::fast_paths_stats::reset();
+        }
     }
 
     fn resume_mutators(tls: VMWorkerThread) {
-        crate::scanning::fast_paths_stats::report();
+        if cfg!(feature = "fast_paths_stats") {
+            crate::scanning::fast_paths_stats::report();
+        }
 
         (upcalls().resume_mutators)(tls);
     }

@@ -3,11 +3,12 @@ use std::sync::atomic::AtomicBool;
 use crate::abi::GCThreadTLS;
 
 use crate::cruby_support::cruby::{
-    rb_shape_obj_too_complex, RUBY_FL_EXIVAR, RUBY_T_ARRAY, RUBY_T_BIGNUM, RUBY_T_FLOAT,
-    RUBY_T_IMEMO, RUBY_T_OBJECT, RUBY_T_STRING, RUBY_T_SYMBOL, SIZEOF_VALUE, VALUE,
+    rb_shape_obj_too_complex, RUBY_T_ARRAY, RUBY_T_BIGNUM, RUBY_T_FLOAT, RUBY_T_IMEMO,
+    RUBY_T_OBJECT, RUBY_T_STRING, RUBY_T_SYMBOL, SIZEOF_VALUE, VALUE,
 };
 use crate::cruby_support::cruby_extra::{
-    my_special_const_p, rarray_embed_ary_addr, rarray_embed_len, robject_embed_ary_addr,
+    get_imemo_type, imemo_mmtk_objbuf, imemo_mmtk_strbuf, my_special_const_p,
+    rarray_embed_ary_addr, rarray_embed_len, IMemoObjBuf,
 };
 use crate::cruby_support::flag_tests;
 use crate::{upcalls, Ruby, RubyEdge};
@@ -47,13 +48,17 @@ impl Scanning<Ruby> for VMScanning {
             true
         };
 
-        fast_paths_stats::object_scanned();
+        if cfg!(feature = "fast_paths_stats") {
+            fast_paths_stats::object_scanned();
+        }
 
         if allow_fast_paths {
             let fast_path_taken = Self::scan_object_and_trace_edges_fast(object, object_tracer);
-            if fast_path_taken {
-                fast_paths_stats::fast_path_taken();
-                return;
+            if cfg!(feature = "fast_paths_stats") {
+                if fast_path_taken {
+                    fast_paths_stats::fast_path_taken();
+                    return;
+                }
             }
         }
 
