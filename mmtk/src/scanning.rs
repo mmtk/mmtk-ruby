@@ -207,8 +207,7 @@ impl VMScanning {
             }
 
             RUBY_T_IMEMO => {
-                // TODO: Some IMemos really should be handled in Rust.
-                return false;
+                Self::scan_and_trace_imemo(object, ruby_value, ruby_flags, ruby_type, object_tracer)
             }
 
             _ => {
@@ -311,6 +310,37 @@ impl VMScanning {
                 }
             }
         }
+    }
+
+    fn scan_and_trace_imemo<OT: ObjectTracer>(
+        _object: ObjectReference,
+        ruby_value: VALUE,
+        ruby_flags: usize,
+        _ruby_type: u32,
+        object_tracer: &mut OT,
+    ) -> bool {
+        let ity = get_imemo_type(ruby_flags);
+
+        match ity {
+            #[allow(non_upper_case_globals)]
+            imemo_mmtk_strbuf => {
+                // strbuf does not have any children.
+                return true;
+            }
+
+            #[allow(non_upper_case_globals)]
+            imemo_mmtk_objbuf => {
+                let objbuf_ptr = ruby_value.as_mut_ptr::<IMemoObjBuf>();
+                let len = unsafe { (*objbuf_ptr).capa };
+                let begin = unsafe { Address::from_mut_ptr(&mut (*objbuf_ptr).ary as *mut _) };
+                Self::scan_and_trace_array_slice(begin, len, object_tracer);
+                return true;
+            }
+
+            _ => {
+                return false;
+            }
+        };
     }
 }
 
