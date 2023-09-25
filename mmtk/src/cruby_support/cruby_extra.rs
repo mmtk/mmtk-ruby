@@ -5,10 +5,12 @@
 
 use mmtk::util::Address;
 
+use crate::cruby_support::cruby::rb_shape_get_shape_by_id;
+
 use super::cruby::{
-    imemo_type, RBasic, RUBY_Qfalse, RARRAY_EMBED_LEN_MASK, RARRAY_EMBED_LEN_SHIFT, RUBY_FL_USER1,
-    RUBY_FL_USER18, RUBY_FL_USER2, RUBY_FL_USHIFT, RUBY_IMMEDIATE_MASK, RUBY_OFFSET_RARRAY_AS_ARY,
-    RUBY_OFFSET_RARRAY_AS_HEAP_LEN, VALUE,
+    imemo_type, RBasic, RUBY_Qfalse, OBJ_TOO_COMPLEX_SHAPE_ID, RARRAY_EMBED_LEN_MASK,
+    RARRAY_EMBED_LEN_SHIFT, RUBY_FL_USER1, RUBY_FL_USER18, RUBY_FL_USER2, RUBY_FL_USHIFT,
+    RUBY_IMMEDIATE_MASK, RUBY_OFFSET_RARRAY_AS_ARY, SHAPE_ID_NUM_BITS, SIZEOF_VALUE, VALUE,
 };
 
 /// Counterpart of `rb_mmtk_objbuf_t` in C
@@ -19,7 +21,14 @@ pub struct IMemoObjBuf {
     pub ary: [VALUE; 1],
 }
 
-pub const RUBY_OFFSET_ROBJECT_AS_ARY: i32 = 32; // struct RObject, subfield "as.ary"
+#[repr(C)]
+pub struct RObjectEmbedded {
+    basic: RBasic,
+    ary: [VALUE; 1],
+}
+
+pub const SHAPE_FLAG_SHIFT: usize = (SIZEOF_VALUE * 8) - SHAPE_ID_NUM_BITS as usize;
+pub const SHAPE_MASK: usize = (1usize << SHAPE_ID_NUM_BITS) - 1;
 
 pub const STR_NO_EMBED: usize = RUBY_FL_USER1 as usize;
 pub const STR_SHARED: usize = RUBY_FL_USER2 as usize;
@@ -38,6 +47,10 @@ impl VALUE {
         let rbasic_ptr = cval as *mut RBasic;
         rbasic_ptr
     }
+
+    pub fn basic_klass(self) -> VALUE {
+        unsafe { (*self.as_basic()).klass }
+    }
 }
 
 pub fn my_special_const_p(value: VALUE) -> bool {
@@ -51,8 +64,24 @@ pub fn my_special_const_p(value: VALUE) -> bool {
     result
 }
 
-pub fn robject_embed_ary_addr(value: VALUE) -> Address {
-    Address::from(value).add(RUBY_OFFSET_ROBJECT_AS_ARY as usize)
+pub fn robject_shape_id(flags: usize) -> u32 {
+    let shape_id_usize = (flags >> SHAPE_FLAG_SHIFT) & SHAPE_MASK;
+    debug_assert!(shape_id_usize <= u32::MAX as usize);
+    shape_id_usize as u32
+}
+
+pub fn shape_id_is_too_complex(shape_id: u32) -> bool {
+    shape_id == OBJ_TOO_COMPLEX_SHAPE_ID
+}
+
+pub fn robject_ivptr_embedded(value: VALUE) -> Address {
+    unsafe { Address::from_mut_ptr(&mut (*value.as_mut_ptr::<RObjectEmbedded>()).ary as _) }
+}
+
+pub fn robject_iv_count_not_too_complex(shape_id: usize) -> usize {
+    let shape = unsafe { rb_shape_get_shape_by_id(shape_id as u32) };
+    let next_iv_index = unsafe { (*shape).next_iv_index };
+    next_iv_index as usize
 }
 
 pub fn rarray_embed_len(flags: usize) -> usize {
@@ -68,4 +97,8 @@ pub fn rarray_embed_ary_addr(value: VALUE) -> Address {
 pub fn get_imemo_type(flags: usize) -> imemo_type {
     // Matches the semantics of the `imemo_type()` function in C.
     (flags >> RUBY_FL_USHIFT) as u32 & IMEMO_MASK
+}
+
+extern "C" {
+    pub fn rb_mmtk_update_iv_count(klass: VALUE, num_of_ivs: usize);
 }

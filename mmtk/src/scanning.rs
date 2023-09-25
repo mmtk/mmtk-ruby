@@ -3,12 +3,14 @@ use std::sync::atomic::AtomicBool;
 use crate::abi::GCThreadTLS;
 
 use crate::cruby_support::cruby::{
-    rb_shape_obj_too_complex, RUBY_T_ARRAY, RUBY_T_BIGNUM, RUBY_T_FLOAT, RUBY_T_IMEMO,
-    RUBY_T_OBJECT, RUBY_T_STRING, RUBY_T_SYMBOL, SIZEOF_VALUE, VALUE,
+    RUBY_T_ARRAY, RUBY_T_BIGNUM, RUBY_T_FLOAT, RUBY_T_IMEMO, RUBY_T_OBJECT, RUBY_T_STRING,
+    RUBY_T_SYMBOL, SIZEOF_VALUE, VALUE,
 };
 use crate::cruby_support::cruby_extra::{
     get_imemo_type, imemo_mmtk_objbuf, imemo_mmtk_strbuf, my_special_const_p,
-    rarray_embed_ary_addr, rarray_embed_len, IMemoObjBuf,
+    rarray_embed_ary_addr, rarray_embed_len, rb_mmtk_update_iv_count,
+    robject_iv_count_not_too_complex, robject_ivptr_embedded, robject_shape_id,
+    shape_id_is_too_complex, IMemoObjBuf,
 };
 use crate::cruby_support::flag_tests;
 use crate::{upcalls, Ruby, RubyEdge};
@@ -240,22 +242,31 @@ impl VMScanning {
     ) -> bool {
         match ruby_type {
             RUBY_T_OBJECT => {
-                if unsafe { rb_shape_obj_too_complex(ruby_value) } {
+                let shape_id = robject_shape_id(ruby_flags);
+
+                if shape_id_is_too_complex(shape_id) {
                     // Too complex.  Fall back to C.
                     return false;
                 }
 
-                if flag_tests::robject_is_embedded(ruby_flags) {
+                if !flag_tests::robject_is_embedded(ruby_flags) {
+                    // Very few T_OBJECT instances are not embedded.  Fall back to C.
+                    // The C code may "re-embed" the object.
                     return false;
-                    // // Scan the embedded parts of the object.
-                    // let payload_addr = robject_embed_ary_addr(ruby_value);
-                    // let
-                    // Self::scan_and_trace_array_slice(tls, object, payload_addr, len, object_tracer);
-                    return true;
                 }
 
-                // Off-load other cases to C.
-                return false;
+                // From here on, we know the object is embedded and not too complex.
+                // Scan the embedded parts of the object.
+                let payload_addr = robject_ivptr_embedded(ruby_value);
+                let num_of_ivs = robject_iv_count_not_too_complex(ruby_flags);
+                Self::scan_and_trace_array_slice(payload_addr, num_of_ivs, object_tracer);
+
+                let klass = ruby_value.basic_klass();
+                unsafe {
+                    rb_mmtk_update_iv_count(klass, num_of_ivs);
+                }
+
+                return true;
             }
             RUBY_T_STRING => {
                 // Match the semantics of `gc_ref_update_string` in C.
