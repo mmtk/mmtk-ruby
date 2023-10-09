@@ -32,7 +32,16 @@ pub type RubyMutator = Mutator<Ruby>;
 /// This instance shall be consumed by `mmtk_init_binding`.
 #[no_mangle]
 pub extern "C" fn mmtk_builder_default() -> *mut MMTKBuilder {
-    Box::into_raw(Box::default())
+    let builder = MMTKBuilder::new_no_env_vars();
+    Box::into_raw(Box::new(builder))
+}
+
+/// Let the MMTKBuilder read options from environment variables,
+/// such as `MMTK_THREADS`.
+#[no_mangle]
+pub extern "C" fn mmtk_builder_read_env_var_settings(builder: *mut MMTKBuilder) {
+    let builder = unsafe { &mut *builder };
+    builder.options.read_env_var_settings();
 }
 
 /// Set the GC trigger to dynamically adjust heap size.
