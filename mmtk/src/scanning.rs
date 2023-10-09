@@ -8,8 +8,7 @@ use crate::cruby_support::cruby::{
 };
 use crate::cruby_support::cruby_extra::{
     get_imemo_type, imemo_mmtk_objbuf, imemo_mmtk_strbuf, my_special_const_p,
-    rarray_embed_ary_addr, rarray_embed_len, rb_mmtk_update_iv_count,
-    robject_iv_count_not_too_complex, robject_ivptr_embedded, robject_shape_id,
+    rarray_embed_ary_addr, rarray_embed_len, robject_ivptr_embedded, robject_shape_id,
     shape_id_is_too_complex, IMemoObjBuf,
 };
 use crate::cruby_support::flag_tests;
@@ -234,7 +233,7 @@ impl VMScanning {
     }
 
     fn scan_and_trace_common<OT: ObjectTracer>(
-        _object: ObjectReference,
+        object: ObjectReference,
         ruby_value: VALUE,
         ruby_flags: usize,
         ruby_type: u32,
@@ -258,13 +257,10 @@ impl VMScanning {
                 // From here on, we know the object is embedded and not too complex.
                 // Scan the embedded parts of the object.
                 let payload_addr = robject_ivptr_embedded(ruby_value);
-                let num_of_ivs = robject_iv_count_not_too_complex(ruby_flags);
+                let num_of_ivs = (upcalls().get_shape_iv_count)(shape_id);
                 Self::scan_and_trace_array_slice(payload_addr, num_of_ivs, object_tracer);
 
-                let klass = ruby_value.basic_klass();
-                unsafe {
-                    rb_mmtk_update_iv_count(klass, num_of_ivs);
-                }
+                (upcalls().update_class_iv_count)(object, num_of_ivs);
 
                 return true;
             }

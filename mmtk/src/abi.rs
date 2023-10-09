@@ -356,6 +356,8 @@ pub struct RubyUpcalls {
     pub get_original_givtbl: extern "C" fn(object: ObjectReference) -> *mut libc::c_void,
     pub move_givtbl: extern "C" fn(old_objref: ObjectReference, new_objref: ObjectReference),
     pub vm_live_bytes: extern "C" fn() -> usize,
+    pub get_shape_iv_count: extern "C" fn(shape_id: u32) -> usize,
+    pub update_class_iv_count: extern "C" fn(object: ObjectReference, num_of_ivs: usize),
 }
 
 unsafe impl Sync for RubyUpcalls {}

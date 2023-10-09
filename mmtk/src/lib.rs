@@ -22,6 +22,7 @@ pub mod active_plan;
 pub mod api;
 pub mod binding;
 pub mod collection;
+/// cbindgen:ignore
 pub(crate) mod cruby_support;
 pub mod object_model;
 pub mod ppp;

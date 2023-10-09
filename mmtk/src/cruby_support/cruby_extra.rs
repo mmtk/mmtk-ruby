@@ -5,8 +5,6 @@
 
 use mmtk::util::Address;
 
-use crate::cruby_support::cruby::rb_shape_get_shape_by_id;
-
 use super::cruby::{
     imemo_type, RBasic, RUBY_Qfalse, OBJ_TOO_COMPLEX_SHAPE_ID, RARRAY_EMBED_LEN_MASK,
     RARRAY_EMBED_LEN_SHIFT, RUBY_FL_USER1, RUBY_FL_USER18, RUBY_FL_USER2, RUBY_FL_USHIFT,
@@ -78,12 +76,6 @@ pub fn robject_ivptr_embedded(value: VALUE) -> Address {
     unsafe { Address::from_mut_ptr(&mut (*value.as_mut_ptr::<RObjectEmbedded>()).ary as _) }
 }
 
-pub fn robject_iv_count_not_too_complex(shape_id: usize) -> usize {
-    let shape = unsafe { rb_shape_get_shape_by_id(shape_id as u32) };
-    let next_iv_index = unsafe { (*shape).next_iv_index };
-    next_iv_index as usize
-}
-
 pub fn rarray_embed_len(flags: usize) -> usize {
     let masked = flags & RARRAY_EMBED_LEN_MASK as usize;
     let shifted = masked >> RARRAY_EMBED_LEN_SHIFT;
@@ -97,8 +89,4 @@ pub fn rarray_embed_ary_addr(value: VALUE) -> Address {
 pub fn get_imemo_type(flags: usize) -> imemo_type {
     // Matches the semantics of the `imemo_type()` function in C.
     (flags >> RUBY_FL_USHIFT) as u32 & IMEMO_MASK
-}
-
-extern "C" {
-    pub fn rb_mmtk_update_iv_count(klass: VALUE, num_of_ivs: usize);
 }
