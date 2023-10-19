@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use crate::api::RubyMutator;
 use crate::{upcalls, Ruby};
 use mmtk::scheduler::{GCController, GCWorker};
@@ -12,6 +14,12 @@ pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
 const HAS_MOVED_GIVTBL: usize = 1 << 63;
 const HIDDEN_SIZE_MASK: usize = 0x0000FFFFFFFFFFFF;
+
+const BUILTIN_TYPE_MASK: usize = 0x1f;
+const T_MOVED: usize = 0x1e;
+const T_MOVED_FORWARDED: usize = 0x3e;
+
+const FORWARDING_POINTER_OFFSET: usize = 16;
 
 /// Provide convenient methods for accessing Ruby objects.
 /// TODO: Wrap C functions in `RubyUpcalls` as Rust-friendly methods.
@@ -122,6 +130,94 @@ impl RubyObjectAccess {
             None
         } else {
             Some(addr)
+        }
+    }
+
+    pub fn attempt_to_forward(&self) -> Result<usize, ()> {
+        trace!("attempt_to_forward({})", self.objref);
+        let flags = unsafe { self.objref.to_raw_address().as_ref::<AtomicUsize>() };
+
+        let old_value = flags.load(Ordering::Relaxed);
+        if old_value & BUILTIN_TYPE_MASK != T_MOVED {
+            trace!("Not forwarded, yet. old value: {:x}", old_value);
+            // Not forwarded yet
+            let new_value = T_MOVED;
+
+            match flags.compare_exchange(old_value, new_value, Ordering::Relaxed, Ordering::Relaxed)
+            {
+                Ok(actual) => {
+                    debug_assert_eq!(actual, old_value);
+                    Ok(old_value)
+                }
+                Err(actual) => {
+                    debug_assert_ne!(actual, old_value);
+                    debug_assert_eq!(actual & BUILTIN_TYPE_MASK, T_MOVED);
+                    Err(())
+                }
+            }
+        } else {
+            trace!("Already forwarded. old value: {:x}", old_value);
+            // Already forwarded. Fail.
+            Err(())
+        }
+    }
+
+    pub fn write_forwarding_state_and_forwarding_pointer(
+        &self,
+        new_object: ObjectReference,
+    ) {
+        trace!("write_forwarding_state_and_forwarding_pointer({}, {})", self.objref, new_object);
+        unsafe {
+            (self.objref.to_raw_address() + FORWARDING_POINTER_OFFSET).store::<ObjectReference>(new_object)
+        }
+
+        // Ordering matters.  The following store is a release store.
+
+        let flags = unsafe { self.objref.to_raw_address().as_ref::<AtomicUsize>() };
+        flags.store(T_MOVED_FORWARDED, Ordering::Release);
+        trace!("Obj: {} Forwarding complete!", self.objref);
+    }
+
+    pub fn revert_forwarding_state(&self, vm_data: usize) {
+        trace!("revert_forwarding_state({}, {:x})", self.objref, vm_data);
+        let flags = unsafe { self.objref.to_raw_address().as_ref::<AtomicUsize>() };
+        flags.store(vm_data, Ordering::Relaxed);
+    }
+
+    pub fn spin_and_get_forwarded_object(&self) -> ObjectReference {
+        trace!("spin_and_get_forwarded_object({})", self.objref);
+        let flags = unsafe { self.objref.to_raw_address().as_ref::<AtomicUsize>() };
+
+        loop {
+            let value = flags.load(Ordering::Acquire);
+
+            trace!("Obj: {} Spinning... Old value: {:x}", self.objref, value);
+
+            // Ordering matters.  The load above is an acquire load.
+
+            match value {
+                T_MOVED_FORWARDED => {
+                    trace!("Obj: {} Complete. Loading fwd ptr...", self.objref);
+                    // Forwarded.  Load forwarding pointer.
+                    break self.load_forwarding_pointer();
+                }
+                T_MOVED => {
+                    panic!("Obj: {} Being forwarded.  How can this be! There is only one thread!", self.objref);
+                    // Being forwarded.
+                    // Keep waiting
+                }
+                _ => {
+                    trace!("Obj: {} Reverted. Loading fwd ptr...", self.objref);
+                    // Reverted.  Return self.
+                    break self.objref;
+                }
+            }
+        }
+    }
+
+    pub fn load_forwarding_pointer(&self) -> ObjectReference {
+        unsafe {
+            (self.objref.to_raw_address() + FORWARDING_POINTER_OFFSET).load::<ObjectReference>()
         }
     }
 }

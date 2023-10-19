@@ -141,23 +141,22 @@ impl ObjectModel<Ruby> for VMObjectModel {
     }
 
     fn attempt_to_forward(object: ObjectReference) -> Result<usize, ()> {
-        
+        RubyObjectAccess::from_objref(object).attempt_to_forward()
     }
 
     fn write_forwarding_state_and_forwarding_pointer(
-            object: ObjectReference,
-            new_object: ObjectReference,
-        ) {
-        
+        object: ObjectReference,
+        new_object: ObjectReference,
+    ) {
+        RubyObjectAccess::from_objref(object)
+            .write_forwarding_state_and_forwarding_pointer(new_object)
     }
 
     fn revert_forwarding_state(object: ObjectReference, vm_data: usize) {
-        
+        RubyObjectAccess::from_objref(object).revert_forwarding_state(vm_data)
     }
 
-    fn spin_and_get_forwarded_object(
-            object: ObjectReference,
-        ) -> ObjectReference {
-        
+    fn spin_and_get_forwarded_object(object: ObjectReference) -> ObjectReference {
+        RubyObjectAccess::from_objref(object).spin_and_get_forwarded_object()
     }
 }
