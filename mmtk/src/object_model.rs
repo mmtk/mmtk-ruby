@@ -37,6 +37,8 @@ impl ObjectModel<Ruby> for VMObjectModel {
 
     const NEED_VO_BITS_DURING_TRACING: bool = true;
 
+    const VM_IMPLEMENTED_FORWARDING: bool = true;
+
     fn copy(
         from: ObjectReference,
         semantics: CopySemantics,
@@ -136,5 +138,26 @@ impl ObjectModel<Ruby> for VMObjectModel {
 
     fn dump_object(_object: ObjectReference) {
         todo!()
+    }
+
+    fn attempt_to_forward(object: ObjectReference) -> Result<usize, ()> {
+        
+    }
+
+    fn write_forwarding_state_and_forwarding_pointer(
+            object: ObjectReference,
+            new_object: ObjectReference,
+        ) {
+        
+    }
+
+    fn revert_forwarding_state(object: ObjectReference, vm_data: usize) {
+        
+    }
+
+    fn spin_and_get_forwarded_object(
+            object: ObjectReference,
+        ) -> ObjectReference {
+        
     }
 }
