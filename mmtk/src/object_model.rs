@@ -2,7 +2,6 @@ use std::ptr::copy_nonoverlapping;
 
 use crate::abi::{RubyObjectAccess, MIN_OBJ_ALIGN, OBJREF_OFFSET};
 use crate::{abi, Ruby};
-use mmtk::util::constants::BITS_IN_BYTE;
 use mmtk::util::copy::{CopySemantics, GCWorkerCopyContext};
 use mmtk::util::{Address, ObjectReference};
 use mmtk::vm::*;
@@ -18,15 +17,18 @@ impl ObjectModel<Ruby> for VMObjectModel {
 
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
 
-    // We overwrite the prepended word which were used to hold object sizes.
+    /// Not used.  We implement forwarding in the VM binding, and put the forwarding pointer at the
+    /// same offset as `RMoved::destination` in C.
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec =
-        VMLocalForwardingPointerSpec::in_header(-((OBJREF_OFFSET * BITS_IN_BYTE) as isize));
+        VMLocalForwardingPointerSpec::in_header(0);
 
+    /// Not used.  We implement forwarding in the VM binding, and represent forwarding states with
+    /// `T_MOVED`. See `abi.rs`.
     const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec =
-        VMLocalForwardingBitsSpec::side_first();
+        VMLocalForwardingBitsSpec::in_header(0);
 
     const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec =
-        VMLocalMarkBitSpec::side_after(Self::LOCAL_FORWARDING_BITS_SPEC.as_spec());
+        VMLocalMarkBitSpec::side_first();
 
     const LOCAL_PINNING_BIT_SPEC: VMLocalPinningBitSpec =
         VMLocalPinningBitSpec::side_after(Self::LOCAL_MARK_BIT_SPEC.as_spec());
