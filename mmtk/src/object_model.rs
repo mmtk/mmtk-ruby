@@ -14,6 +14,8 @@ impl VMObjectModel {
 }
 
 impl ObjectModel<Ruby> for VMObjectModel {
+    type VMForwardingDataType = usize;
+
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
 
     // We overwrite the prepended word which were used to hold object sizes.
@@ -37,12 +39,11 @@ impl ObjectModel<Ruby> for VMObjectModel {
 
     const NEED_VO_BITS_DURING_TRACING: bool = true;
 
-    const VM_IMPLEMENTED_FORWARDING: bool = true;
-
     fn copy(
         from: ObjectReference,
         semantics: CopySemantics,
         copy_context: &mut GCWorkerCopyContext<Ruby>,
+        vm_data: Self::VMForwardingDataType,
     ) -> ObjectReference {
         let from_acc = RubyObjectAccess::from_objref(from);
         let maybe_givtbl = from_acc.get_original_givtbl();
@@ -53,6 +54,13 @@ impl ObjectModel<Ruby> for VMObjectModel {
         unsafe {
             copy_nonoverlapping::<u8>(from_start.to_ptr(), to_start.to_mut_ptr(), object_size);
         }
+
+        // The `flags` field of the from-space copy is overwritten to `T_MOVED`.
+        // Reconstruct the `flags` of the to-space copy.
+        unsafe {
+            to_payload.store::<usize>(vm_data);
+        }
+
         let to_obj = ObjectReference::from_raw_address(to_payload);
         copy_context.post_copy(to_obj, object_size, semantics);
         trace!("Copied object from {} to {}", from, to_obj);
@@ -140,7 +148,7 @@ impl ObjectModel<Ruby> for VMObjectModel {
         todo!()
     }
 
-    fn attempt_to_forward(object: ObjectReference) -> Result<usize, ()> {
+    fn attempt_to_forward(object: ObjectReference) -> Option<Self::VMForwardingDataType> {
         RubyObjectAccess::from_objref(object).attempt_to_forward()
     }
 
@@ -158,5 +166,13 @@ impl ObjectModel<Ruby> for VMObjectModel {
 
     fn spin_and_get_forwarded_object(object: ObjectReference) -> ObjectReference {
         RubyObjectAccess::from_objref(object).spin_and_get_forwarded_object()
+    }
+
+    fn is_forwarded(object: ObjectReference) -> bool {
+        RubyObjectAccess::from_objref(object).is_forwarded()
+    }
+
+    fn read_forwarding_pointer(object: ObjectReference) -> ObjectReference {
+        RubyObjectAccess::from_objref(object).load_forwarding_pointer()
     }
 }

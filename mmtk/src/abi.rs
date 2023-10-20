@@ -133,32 +133,32 @@ impl RubyObjectAccess {
         }
     }
 
-    pub fn attempt_to_forward(&self) -> Result<usize, ()> {
+    pub fn attempt_to_forward(&self) -> Option<usize> {
         trace!("attempt_to_forward({})", self.objref);
         let flags = unsafe { self.objref.to_raw_address().as_ref::<AtomicUsize>() };
 
         let old_value = flags.load(Ordering::Relaxed);
         if old_value & BUILTIN_TYPE_MASK != T_MOVED {
-            trace!("Not forwarded, yet. old value: {:x}", old_value);
-            // Not forwarded yet
+            trace!("Forwarding not triggered, yet. old value: {:x}", old_value);
+            // Forwarding not triggered yet. Try to transition the state.
             let new_value = T_MOVED;
 
             match flags.compare_exchange(old_value, new_value, Ordering::Relaxed, Ordering::Relaxed)
             {
                 Ok(actual) => {
                     debug_assert_eq!(actual, old_value);
-                    Ok(old_value)
+                    Some(old_value)
                 }
                 Err(actual) => {
                     debug_assert_ne!(actual, old_value);
                     debug_assert_eq!(actual & BUILTIN_TYPE_MASK, T_MOVED);
-                    Err(())
+                    None
                 }
             }
         } else {
             trace!("Already forwarded. old value: {:x}", old_value);
             // Already forwarded. Fail.
-            Err(())
+            None
         }
     }
 
@@ -213,6 +213,12 @@ impl RubyObjectAccess {
                 }
             }
         }
+    }
+
+    pub fn is_forwarded(&self) -> bool {
+        let flags = unsafe { self.objref.to_raw_address().as_ref::<AtomicUsize>() };
+        let old_value = flags.load(Ordering::Relaxed);
+        old_value == T_MOVED_FORWARDED
     }
 
     pub fn load_forwarding_pointer(&self) -> ObjectReference {
