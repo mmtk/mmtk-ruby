@@ -383,6 +383,7 @@ dependencies = [
 [[package]]
 name = "mmtk"
 version = "0.20.0"
+source = "git+https://github.com/wks/mmtk-core.git?branch=feature/vm-forwarding#d0ac4dd94eda717bd438337e9efa78b5c66e0d3f"
 dependencies = [
  "atomic",
  "atomic-traits",
@@ -416,6 +417,7 @@ dependencies = [
 [[package]]
 name = "mmtk-macros"
 version = "0.20.0"
+source = "git+https://github.com/wks/mmtk-core.git?branch=feature/vm-forwarding#d0ac4dd94eda717bd438337e9efa78b5c66e0d3f"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
