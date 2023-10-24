@@ -7,15 +7,10 @@ use crate::Ruby;
 use mmtk::util::opaque_pointer::*;
 use mmtk::vm::ActivePlan;
 use mmtk::Mutator;
-use mmtk::Plan;
 
 pub struct VMActivePlan {}
 
 impl ActivePlan<Ruby> for VMActivePlan {
-    fn global() -> &'static dyn Plan<VM = Ruby> {
-        mmtk().get_plan()
-    }
-
     fn number_of_mutators() -> usize {
         (upcalls().number_of_mutators)()
     }

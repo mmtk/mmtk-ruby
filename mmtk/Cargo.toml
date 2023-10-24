@@ -35,9 +35,12 @@ probe = "0.5"
 [dependencies.mmtk]
 features = ["is_mmtk_object", "object_pinning", "vm_forwarding"]
 
-# Uncomment one of the following lines to choose where to find mmtk-core.
-#git = "https://github.com/mmtk/mmtk-core.git"  # Use mmtk-core from the official repository.
-path = "../../mmtk-core"  # Use mmtk-core from a local repository.
+# Uncomment the following two lines to use the given revision of mmtk-core from the official repository.
+#git = "https://github.com/mmtk/mmtk-core.git"
+#rev = "57af17fbfd94ff0df2cd3b1e504abe299ce4f0ab"
+
+# Uncomment the following line to use mmtk-core from a local repository.
+path = "../../mmtk-core"
 
 [features]
 default = []
