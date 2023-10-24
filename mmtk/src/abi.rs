@@ -202,7 +202,6 @@ impl RubyObjectAccess {
                     break self.load_forwarding_pointer();
                 }
                 T_MOVED => {
-                    panic!("Obj: {} Being forwarded.  How can this be! There is only one thread!", self.objref);
                     // Being forwarded.
                     // Keep waiting
                 }
