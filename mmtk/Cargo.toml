@@ -38,6 +38,7 @@ features = ["is_mmtk_object", "object_pinning"]
 # Uncomment one of the following lines to choose where to find mmtk-core.
 git = "https://github.com/mmtk/mmtk-core.git"  # Use mmtk-core from the official repository.
 #path = "../../mmtk-core"  # Use mmtk-core from a local repository.
+rev = "57af17fbfd94ff0df2cd3b1e504abe299ce4f0ab"
 
 [features]
 default = []

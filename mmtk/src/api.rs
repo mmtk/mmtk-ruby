@@ -209,11 +209,6 @@ pub extern "C" fn mmtk_is_mmtk_object(addr: Address) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_modify_check(object: ObjectReference) {
-    memory_manager::modify_check(mmtk(), object)
-}
-
-#[no_mangle]
 pub extern "C" fn mmtk_handle_user_collection_request(tls: VMMutatorThread) {
     memory_manager::handle_user_collection_request::<Ruby>(mmtk(), tls);
 }
