@@ -162,13 +162,15 @@ impl RubyObjectAccess {
         }
     }
 
-    pub fn write_forwarding_state_and_forwarding_pointer(
-        &self,
-        new_object: ObjectReference,
-    ) {
-        trace!("write_forwarding_state_and_forwarding_pointer({}, {})", self.objref, new_object);
+    pub fn write_forwarding_state_and_forwarding_pointer(&self, new_object: ObjectReference) {
+        trace!(
+            "write_forwarding_state_and_forwarding_pointer({}, {})",
+            self.objref,
+            new_object
+        );
         unsafe {
-            (self.objref.to_raw_address() + FORWARDING_POINTER_OFFSET).store::<ObjectReference>(new_object)
+            (self.objref.to_raw_address() + FORWARDING_POINTER_OFFSET)
+                .store::<ObjectReference>(new_object)
         }
 
         // Ordering matters.  The following store is a release store.
