@@ -1,6 +1,6 @@
 use std::ptr::copy_nonoverlapping;
 
-use crate::abi::{RubyObjectAccess, MIN_OBJ_ALIGN, OBJREF_OFFSET};
+use crate::abi::{flags_has_fl_exivar, RubyObjectAccess, MIN_OBJ_ALIGN, OBJREF_OFFSET};
 use crate::{abi, Ruby};
 use mmtk::util::copy::{CopySemantics, GCWorkerCopyContext};
 use mmtk::util::{Address, ObjectReference};
@@ -47,7 +47,11 @@ impl ObjectModel<Ruby> for VMObjectModel {
         vm_data: Self::VMForwardingDataType,
     ) -> ObjectReference {
         let from_acc = RubyObjectAccess::from_objref(from);
-        let maybe_givtbl = from_acc.get_original_givtbl();
+        let maybe_givtbl = if flags_has_fl_exivar(vm_data) {
+            from_acc.get_original_givtbl()
+        } else {
+            None
+        };
         let from_start = from_acc.obj_start();
         let object_size = from_acc.object_size();
         let to_start = copy_context.alloc_copy(from, object_size, MIN_OBJ_ALIGN, 0, semantics);
@@ -92,6 +96,7 @@ impl ObjectModel<Ruby> for VMObjectModel {
             }
             let to_acc = RubyObjectAccess::from_objref(to_obj);
             to_acc.set_has_moved_givtbl();
+            warn!("{} has moved givtbl", to_obj);
         }
 
         to_obj

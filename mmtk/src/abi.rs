@@ -21,6 +21,12 @@ const T_MOVED_FORWARDED: usize = 0x3e;
 
 const FORWARDING_POINTER_OFFSET: usize = 16;
 
+const RUBY_FL_EXIVAR: usize = 1 << 10;
+
+pub fn flags_has_fl_exivar(flags: usize) -> bool {
+    flags & RUBY_FL_EXIVAR != 0
+}
+
 /// Provide convenient methods for accessing Ruby objects.
 /// TODO: Wrap C functions in `RubyUpcalls` as Rust-friendly methods.
 pub struct RubyObjectAccess {
