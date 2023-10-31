@@ -18,17 +18,15 @@ const HIDDEN_SIZE_MASK: usize = 0x0000FFFFFFFFFFFF;
 const BUILTIN_TYPE_MASK: usize = 0x1f;
 const T_MOVED: usize = 0x1e;
 
-const FORWARDING_POINTER_OFFSET: usize = 16;
-
 const RUBY_FL_PROMOTED: usize = 1 << 5;
 const RUBY_FL_EXIVAR: usize = 1 << 10;
 
 fn flags_is_forwarding_not_triggered_yet(flags: usize) -> bool {
-    !flags_is_forwarded_or_being_forwarded(flags)
+    (flags & BUILTIN_TYPE_MASK) != T_MOVED && (flags & RUBY_FL_PROMOTED) == 0
 }
 
 fn flags_is_being_forwarded(flags: usize) -> bool {
-    (flags & RUBY_FL_PROMOTED) != 0
+    (flags & BUILTIN_TYPE_MASK) != T_MOVED && (flags & RUBY_FL_PROMOTED) != 0
 }
 
 fn flags_is_forwarded(flags: usize) -> bool {
@@ -36,7 +34,7 @@ fn flags_is_forwarded(flags: usize) -> bool {
 }
 
 fn flags_is_forwarded_or_being_forwarded(flags: usize) -> bool {
-    flags_is_being_forwarded(flags) || flags_is_forwarded(flags)
+    !flags_is_forwarding_not_triggered_yet(flags)
 }
 
 fn flags_set_being_forwarded(flags: usize) -> usize {
@@ -47,8 +45,12 @@ pub fn flags_clear_being_forwarded(flags: usize) -> usize {
     flags & !RUBY_FL_PROMOTED
 }
 
-fn flags_set_forwarded(flags: usize) -> usize {
-    (flags_clear_being_forwarded(flags) & !BUILTIN_TYPE_MASK) | T_MOVED
+fn flags_set_forwarded_with_forwarding_pointer(forwarding_pointer: usize) -> usize {
+    T_MOVED | forwarding_pointer << 8
+}
+
+fn flags_get_forwarding_pointer(flags: usize) -> usize {
+    flags >> 8
 }
 
 pub fn flags_has_fl_exivar(flags: usize) -> bool {
@@ -206,16 +208,11 @@ impl RubyObjectAccess {
             self.objref,
             new_object
         );
-        unsafe {
-            (self.objref.to_raw_address() + FORWARDING_POINTER_OFFSET)
-                .store::<ObjectReference>(new_object)
-        }
 
         let flags = self.flags_field_atomic();
         // Note: no need for atomic RMW operation because we currently owns this object.
-        let old_value = flags.load(Ordering::Relaxed);
-        debug_assert!(flags_is_being_forwarded(old_value));
-        let new_value = flags_set_forwarded(old_value);
+        let new_value =
+            flags_set_forwarded_with_forwarding_pointer(new_object.to_raw_address().as_usize());
         // Ordering matters.  The following store is a release store.
         flags.store(new_value, Ordering::Release);
         trace!("Obj: {} Forwarding complete!", self.objref);
@@ -263,9 +260,11 @@ impl RubyObjectAccess {
     }
 
     pub fn load_forwarding_pointer(&self) -> ObjectReference {
-        unsafe {
-            (self.objref.to_raw_address() + FORWARDING_POINTER_OFFSET).load::<ObjectReference>()
-        }
+        let flags = self.flags_field_atomic();
+        let old_value = flags.load(Ordering::Relaxed);
+        ObjectReference::from_raw_address(unsafe {
+            Address::from_usize(flags_get_forwarding_pointer(old_value))
+        })
     }
 }
 
