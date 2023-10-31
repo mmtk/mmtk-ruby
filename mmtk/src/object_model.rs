@@ -1,6 +1,7 @@
 use std::ptr::copy_nonoverlapping;
+use std::sync::atomic::Ordering;
 
-use crate::abi::{flags_has_fl_exivar, RubyObjectAccess, MIN_OBJ_ALIGN, OBJREF_OFFSET};
+use crate::abi::{flags_has_fl_exivar, RubyObjectAccess, MIN_OBJ_ALIGN, OBJREF_OFFSET, flags_clear_being_forwarded};
 use crate::{abi, Ruby};
 use mmtk::util::copy::{CopySemantics, GCWorkerCopyContext};
 use mmtk::util::{Address, ObjectReference};
@@ -13,7 +14,7 @@ impl VMObjectModel {
 }
 
 impl ObjectModel<Ruby> for VMObjectModel {
-    type VMForwardingDataType = usize;
+    type VMForwardingDataType = ();
 
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
 
@@ -44,10 +45,12 @@ impl ObjectModel<Ruby> for VMObjectModel {
         from: ObjectReference,
         semantics: CopySemantics,
         copy_context: &mut GCWorkerCopyContext<Ruby>,
-        vm_data: Self::VMForwardingDataType,
+        _vm_data: Self::VMForwardingDataType,
     ) -> ObjectReference {
         let from_acc = RubyObjectAccess::from_objref(from);
-        let maybe_givtbl = if flags_has_fl_exivar(vm_data) {
+        let flags = from_acc.flags_field_atomic();
+        let old_flags = flags.load(Ordering::Relaxed);
+        let maybe_givtbl = if flags_has_fl_exivar(old_flags) {
             from_acc.get_original_givtbl()
         } else {
             None
@@ -62,8 +65,9 @@ impl ObjectModel<Ruby> for VMObjectModel {
 
         // The `flags` field of the from-space copy is overwritten to `T_MOVED`.
         // Reconstruct the `flags` of the to-space copy.
+        let new_flags = flags_clear_being_forwarded(old_flags);
         unsafe {
-            to_payload.store::<usize>(vm_data);
+            to_payload.store::<usize>(new_flags);
         }
 
         let to_obj = ObjectReference::from_raw_address(to_payload);
@@ -155,7 +159,7 @@ impl ObjectModel<Ruby> for VMObjectModel {
     }
 
     fn attempt_to_forward(object: ObjectReference) -> Option<Self::VMForwardingDataType> {
-        RubyObjectAccess::from_objref(object).attempt_to_forward()
+        RubyObjectAccess::from_objref(object).attempt_to_forward().then_some(())
     }
 
     fn write_forwarding_state_and_forwarding_pointer(
@@ -166,8 +170,8 @@ impl ObjectModel<Ruby> for VMObjectModel {
             .write_forwarding_state_and_forwarding_pointer(new_object)
     }
 
-    fn revert_forwarding_state(object: ObjectReference, vm_data: usize) {
-        RubyObjectAccess::from_objref(object).revert_forwarding_state(vm_data)
+    fn revert_forwarding_state(object: ObjectReference, _vm_data: Self::VMForwardingDataType) {
+        RubyObjectAccess::from_objref(object).revert_forwarding_state()
     }
 
     fn spin_and_get_forwarded_object(object: ObjectReference) -> ObjectReference {
