@@ -1,8 +1,8 @@
 use std::ptr::copy_nonoverlapping;
+use std::sync::atomic::Ordering;
 
-use crate::abi::{RubyObjectAccess, MIN_OBJ_ALIGN, OBJREF_OFFSET};
+use crate::abi::{flags_has_fl_exivar, RubyObjectAccess, MIN_OBJ_ALIGN, OBJREF_OFFSET, flags_clear_being_forwarded};
 use crate::{abi, Ruby};
-use mmtk::util::constants::BITS_IN_BYTE;
 use mmtk::util::copy::{CopySemantics, GCWorkerCopyContext};
 use mmtk::util::{Address, ObjectReference};
 use mmtk::vm::*;
@@ -14,17 +14,21 @@ impl VMObjectModel {
 }
 
 impl ObjectModel<Ruby> for VMObjectModel {
+    type VMForwardingDataType = ();
+
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
 
-    // We overwrite the prepended word which were used to hold object sizes.
+    /// Not used.  We implement forwarding in the VM binding, and put the forwarding pointer at the
+    /// same offset as `RMoved::destination` in C.
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec =
-        VMLocalForwardingPointerSpec::in_header(-((OBJREF_OFFSET * BITS_IN_BYTE) as isize));
+        VMLocalForwardingPointerSpec::in_header(0);
 
+    /// Not used.  We implement forwarding in the VM binding, and represent forwarding states with
+    /// `T_MOVED`. See `abi.rs`.
     const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec =
-        VMLocalForwardingBitsSpec::side_first();
+        VMLocalForwardingBitsSpec::in_header(0);
 
-    const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec =
-        VMLocalMarkBitSpec::side_after(Self::LOCAL_FORWARDING_BITS_SPEC.as_spec());
+    const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec = VMLocalMarkBitSpec::side_first();
 
     const LOCAL_PINNING_BIT_SPEC: VMLocalPinningBitSpec =
         VMLocalPinningBitSpec::side_after(Self::LOCAL_MARK_BIT_SPEC.as_spec());
@@ -41,9 +45,16 @@ impl ObjectModel<Ruby> for VMObjectModel {
         from: ObjectReference,
         semantics: CopySemantics,
         copy_context: &mut GCWorkerCopyContext<Ruby>,
+        _vm_data: Self::VMForwardingDataType,
     ) -> ObjectReference {
         let from_acc = RubyObjectAccess::from_objref(from);
-        let maybe_givtbl = from_acc.get_original_givtbl();
+        let flags = from_acc.flags_field_atomic();
+        let old_flags = flags.load(Ordering::Relaxed);
+        let maybe_givtbl = if flags_has_fl_exivar(old_flags) {
+            from_acc.get_original_givtbl()
+        } else {
+            None
+        };
         let from_start = from_acc.obj_start();
         let object_size = from_acc.object_size();
         let to_start = copy_context.alloc_copy(from, object_size, MIN_OBJ_ALIGN, 0, semantics);
@@ -51,6 +62,14 @@ impl ObjectModel<Ruby> for VMObjectModel {
         unsafe {
             copy_nonoverlapping::<u8>(from_start.to_ptr(), to_start.to_mut_ptr(), object_size);
         }
+
+        // The `flags` field of the from-space copy is overwritten to `T_MOVED`.
+        // Reconstruct the `flags` of the to-space copy.
+        let new_flags = flags_clear_being_forwarded(old_flags);
+        unsafe {
+            to_payload.store::<usize>(new_flags);
+        }
+
         let to_obj = ObjectReference::from_raw_address(to_payload);
         copy_context.post_copy(to_obj, object_size, semantics);
         trace!("Copied object from {} to {}", from, to_obj);
@@ -81,6 +100,7 @@ impl ObjectModel<Ruby> for VMObjectModel {
             }
             let to_acc = RubyObjectAccess::from_objref(to_obj);
             to_acc.set_has_moved_givtbl();
+            warn!("{} has moved givtbl", to_obj);
         }
 
         to_obj
@@ -136,5 +156,33 @@ impl ObjectModel<Ruby> for VMObjectModel {
 
     fn dump_object(_object: ObjectReference) {
         todo!()
+    }
+
+    fn attempt_to_forward(object: ObjectReference) -> Option<Self::VMForwardingDataType> {
+        RubyObjectAccess::from_objref(object).attempt_to_forward().then_some(())
+    }
+
+    fn write_forwarding_state_and_forwarding_pointer(
+        object: ObjectReference,
+        new_object: ObjectReference,
+    ) {
+        RubyObjectAccess::from_objref(object)
+            .write_forwarding_state_and_forwarding_pointer(new_object)
+    }
+
+    fn revert_forwarding_state(object: ObjectReference, _vm_data: Self::VMForwardingDataType) {
+        RubyObjectAccess::from_objref(object).revert_forwarding_state()
+    }
+
+    fn spin_and_get_forwarded_object(object: ObjectReference) -> ObjectReference {
+        RubyObjectAccess::from_objref(object).spin_and_get_forwarded_object()
+    }
+
+    fn is_forwarded(object: ObjectReference) -> bool {
+        RubyObjectAccess::from_objref(object).is_forwarded()
+    }
+
+    fn read_forwarding_pointer(object: ObjectReference) -> ObjectReference {
+        RubyObjectAccess::from_objref(object).load_forwarding_pointer()
     }
 }

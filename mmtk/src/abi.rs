@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use crate::api::RubyMutator;
 use crate::{upcalls, Ruby};
 use mmtk::scheduler::{GCController, GCWorker};
@@ -12,6 +14,48 @@ pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
 const HAS_MOVED_GIVTBL: usize = 1 << 63;
 const HIDDEN_SIZE_MASK: usize = 0x0000FFFFFFFFFFFF;
+
+const BUILTIN_TYPE_MASK: usize = 0x1f;
+const T_MOVED: usize = 0x1e;
+
+const RUBY_FL_PROMOTED: usize = 1 << 5;
+const RUBY_FL_EXIVAR: usize = 1 << 10;
+
+fn flags_is_forwarding_not_triggered_yet(flags: usize) -> bool {
+    (flags & BUILTIN_TYPE_MASK) != T_MOVED && (flags & RUBY_FL_PROMOTED) == 0
+}
+
+fn flags_is_being_forwarded(flags: usize) -> bool {
+    (flags & BUILTIN_TYPE_MASK) != T_MOVED && (flags & RUBY_FL_PROMOTED) != 0
+}
+
+fn flags_is_forwarded(flags: usize) -> bool {
+    (flags & BUILTIN_TYPE_MASK) == T_MOVED
+}
+
+fn flags_is_forwarded_or_being_forwarded(flags: usize) -> bool {
+    !flags_is_forwarding_not_triggered_yet(flags)
+}
+
+fn flags_set_being_forwarded(flags: usize) -> usize {
+    flags | RUBY_FL_PROMOTED
+}
+
+pub fn flags_clear_being_forwarded(flags: usize) -> usize {
+    flags & !RUBY_FL_PROMOTED
+}
+
+fn flags_set_forwarded_with_forwarding_pointer(forwarding_pointer: usize) -> usize {
+    T_MOVED | forwarding_pointer << 8
+}
+
+fn flags_get_forwarding_pointer(flags: usize) -> usize {
+    flags >> 8
+}
+
+pub fn flags_has_fl_exivar(flags: usize) -> bool {
+    flags & RUBY_FL_EXIVAR != 0
+}
 
 /// Provide convenient methods for accessing Ruby objects.
 /// TODO: Wrap C functions in `RubyUpcalls` as Rust-friendly methods.
@@ -123,6 +167,104 @@ impl RubyObjectAccess {
         } else {
             Some(addr)
         }
+    }
+
+    pub fn flags_field_atomic(&self) -> &'static AtomicUsize {
+        unsafe { self.objref.to_raw_address().as_ref::<AtomicUsize>() }
+    }
+
+    pub fn attempt_to_forward(&self) -> bool {
+        trace!("attempt_to_forward({})", self.objref);
+        let flags = self.flags_field_atomic();
+
+        let old_value = flags.load(Ordering::Relaxed);
+        if flags_is_forwarding_not_triggered_yet(old_value) {
+            trace!("Forwarding not triggered, yet. old value: {:x}", old_value);
+            // Forwarding not triggered yet. Try to transition the state.
+            let new_value = flags_set_being_forwarded(old_value);
+
+            match flags.compare_exchange(old_value, new_value, Ordering::Relaxed, Ordering::Relaxed)
+            {
+                Ok(actual) => {
+                    debug_assert_eq!(actual, old_value);
+                    true
+                }
+                Err(actual) => {
+                    debug_assert_ne!(actual, old_value);
+                    debug_assert!(flags_is_forwarded_or_being_forwarded(actual));
+                    false
+                }
+            }
+        } else {
+            trace!("Already forwarded. old value: {:x}", old_value);
+            // Already forwarded. Fail.
+            false
+        }
+    }
+
+    pub fn write_forwarding_state_and_forwarding_pointer(&self, new_object: ObjectReference) {
+        trace!(
+            "write_forwarding_state_and_forwarding_pointer({}, {})",
+            self.objref,
+            new_object
+        );
+
+        let flags = self.flags_field_atomic();
+        // Note: no need for atomic RMW operation because we currently owns this object.
+        let new_value =
+            flags_set_forwarded_with_forwarding_pointer(new_object.to_raw_address().as_usize());
+        // Ordering matters.  The following store is a release store.
+        flags.store(new_value, Ordering::Release);
+        trace!("Obj: {} Forwarding complete!", self.objref);
+    }
+
+    pub fn revert_forwarding_state(&self) {
+        trace!("revert_forwarding_state({})", self.objref);
+        let flags = self.flags_field_atomic();
+        // Note: no need for atomic RMW operation because we currently owns this object.
+        let old_value = flags.load(Ordering::Relaxed);
+        debug_assert!(flags_is_being_forwarded(old_value));
+        let new_value = flags_clear_being_forwarded(old_value);
+        flags.store(new_value, Ordering::Relaxed);
+    }
+
+    pub fn spin_and_get_forwarded_object(&self) -> ObjectReference {
+        trace!("spin_and_get_forwarded_object({})", self.objref);
+        let flags = self.flags_field_atomic();
+
+        loop {
+            let value = flags.load(Ordering::Acquire);
+            // Ordering matters.  The load above is an acquire load.
+
+            trace!("Obj: {} Spinning... Old value: {:x}", self.objref, value);
+
+            if flags_is_forwarded(value) {
+                trace!("Obj: {} Complete. Loading fwd ptr...", self.objref);
+                // Load forwarding pointer.
+                break self.load_forwarding_pointer();
+            } else if flags_is_being_forwarded(value) {
+                // Being forwarded.
+                // Keep waiting
+            } else {
+                trace!("Obj: {} Reverted. Loading fwd ptr...", self.objref);
+                // Reverted.  Return self.
+                break self.objref;
+            }
+        }
+    }
+
+    pub fn is_forwarded(&self) -> bool {
+        let flags = self.flags_field_atomic();
+        let old_value = flags.load(Ordering::Relaxed);
+        flags_is_forwarded(old_value)
+    }
+
+    pub fn load_forwarding_pointer(&self) -> ObjectReference {
+        let flags = self.flags_field_atomic();
+        let old_value = flags.load(Ordering::Relaxed);
+        ObjectReference::from_raw_address(unsafe {
+            Address::from_usize(flags_get_forwarding_pointer(old_value))
+        })
     }
 }
 
