@@ -30,7 +30,7 @@ pushd $RUBY_PATH
 
     case $DEBUG_LEVEL in
         debug)
-            ../configure --with-mmtk-ruby=$BINDING_PATH --with-mmtk-ruby-debug --prefix=$RUBY_INSTALL_PATH --disable-install-doc cppflags='-g3 -O0 -DRUBY_DEBUG=1 -DRUBY_DEVEL -DUSE_RUBY_DEBUG_LOG=1'
+            ../configure --with-mmtk-ruby=$BINDING_PATH --with-mmtk-ruby-debug --prefix=$RUBY_INSTALL_PATH --disable-install-doc cppflags='-g3 -O0 -DRUBY_DEBUG=1 -DRUBY_DEVEL -DUSE_RUBY_DEBUG_LOG=1 -DSHAPE_DEBUG=0'
             make miniruby -j $NUM_OF_JOBS
             ;;
 
