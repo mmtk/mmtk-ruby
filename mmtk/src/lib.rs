@@ -17,6 +17,10 @@ use mmtk::vm::VMBinding;
 use mmtk::MMTK;
 use once_cell::sync::OnceCell;
 
+// `cruby.rs` contains a macro that refers to itself as `crate::cruby`.
+// I don't want to change that.
+pub(crate) use cruby_support::cruby;
+
 pub mod abi;
 pub mod active_plan;
 pub mod api;
