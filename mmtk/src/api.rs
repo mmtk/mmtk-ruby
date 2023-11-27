@@ -297,3 +297,18 @@ pub extern "C" fn mmtk_get_immix_bump_ptr_offset() -> usize {
     };
     bump_pointer_offset
 }
+
+#[no_mangle]
+pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
+    mmtk::memory_manager::pin_object::<Ruby>(object)
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
+    mmtk::memory_manager::unpin_object::<Ruby>(object)
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_is_pinned(object: ObjectReference) -> bool {
+    mmtk::memory_manager::is_pinned::<Ruby>(object)
+}
