@@ -1,7 +1,7 @@
 //! This module re-implements some flag-testing macros in Rust
 
 use super::{
-    cruby::{ROBJECT_EMBED, RUBY_FL_EXIVAR, RARRAY_EMBED_FLAG},
+    cruby::{RARRAY_EMBED_FLAG, ROBJECT_EMBED, RUBY_FL_EXIVAR},
     cruby_extra::{STR_NOFREE, STR_NO_EMBED, STR_SHARED},
 };
 

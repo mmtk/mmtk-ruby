@@ -7,9 +7,12 @@ use mmtk::util::{Address, ObjectReference};
 
 use self::cruby::VALUE;
 
+// `cruby.rs` is copied verbatim from the CRuby.  We disable linting and formatting for it.
 #[allow(unused)]
 #[allow(clippy::all)]
+#[rustfmt::skip]
 pub mod cruby;
+
 pub mod cruby_extra;
 pub mod flag_tests;
 pub mod mmtk_extra;

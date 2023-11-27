@@ -342,9 +342,7 @@ impl VMScanning {
                 true
             }
 
-            _ => {
-                false
-            }
+            _ => false,
         }
     }
 }

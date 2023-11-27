@@ -42,7 +42,7 @@ pub const imemo_mmtk_objbuf: imemo_type = 15;
 impl VALUE {
     pub fn as_basic(self) -> *mut RBasic {
         let VALUE(cval) = self;
-        
+
         cval as *mut RBasic
     }
 
@@ -58,7 +58,7 @@ pub fn my_special_const_p(value: VALUE) -> bool {
     let VALUE(cval) = value;
     let is_immediate = cval & RUBY_IMMEDIATE_MASK as usize != 0;
     let is_false = cval == RUBY_Qfalse as usize;
-    
+
     is_immediate || is_false
 }
 
@@ -78,7 +78,7 @@ pub fn robject_ivptr_embedded(value: VALUE) -> Address {
 
 pub fn rarray_embed_len(flags: usize) -> usize {
     let masked = flags & RARRAY_EMBED_LEN_MASK as usize;
-    
+
     masked >> RARRAY_EMBED_LEN_SHIFT
 }
 
