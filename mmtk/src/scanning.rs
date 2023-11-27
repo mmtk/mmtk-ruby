@@ -55,11 +55,9 @@ impl Scanning<Ruby> for VMScanning {
 
         if allow_fast_paths {
             let fast_path_taken = Self::scan_object_and_trace_edges_fast(object, object_tracer);
-            if cfg!(feature = "fast_paths_stats") {
-                if fast_path_taken {
-                    fast_paths_stats::fast_path_taken();
-                    return;
-                }
+            if cfg!(feature = "fast_paths_stats") && fast_path_taken {
+                fast_paths_stats::fast_path_taken();
+                return;
             }
         }
 
@@ -204,7 +202,7 @@ impl VMScanning {
         match ruby_type {
             RUBY_T_FLOAT | RUBY_T_BIGNUM | RUBY_T_SYMBOL => {
                 // Those objects have no children.
-                return true;
+                true
             }
 
             RUBY_T_IMEMO => {
@@ -262,7 +260,7 @@ impl VMScanning {
 
                 (upcalls().update_class_iv_count)(object, num_of_ivs);
 
-                return true;
+                true
             }
             RUBY_T_STRING => {
                 // Match the semantics of `gc_ref_update_string` in C.
@@ -277,7 +275,7 @@ impl VMScanning {
                 }
 
                 // Off-load other cases to C.
-                return false;
+                false
             }
             RUBY_T_ARRAY => {
                 // Match the semantics of `gc_ref_update_array` in C.
@@ -291,13 +289,13 @@ impl VMScanning {
                 }
 
                 // Off-load other cases to C.
-                return false;
+                false
             }
             _ => {
                 // For all other types, fall back to C.
-                return false;
+                false
             }
-        };
+        }
     }
 
     fn scan_and_trace_array_slice<OT: ObjectTracer>(
@@ -332,7 +330,7 @@ impl VMScanning {
             #[allow(non_upper_case_globals)]
             imemo_mmtk_strbuf => {
                 // strbuf does not have any children.
-                return true;
+                true
             }
 
             #[allow(non_upper_case_globals)]
@@ -341,13 +339,13 @@ impl VMScanning {
                 let len = unsafe { (*objbuf_ptr).capa };
                 let begin = unsafe { Address::from_mut_ptr(&mut (*objbuf_ptr).ary as *mut _) };
                 Self::scan_and_trace_array_slice(begin, len, object_tracer);
-                return true;
+                true
             }
 
             _ => {
-                return false;
+                false
             }
-        };
+        }
     }
 }
 

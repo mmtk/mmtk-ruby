@@ -8,6 +8,7 @@ use mmtk::util::{Address, ObjectReference};
 use self::cruby::VALUE;
 
 #[allow(unused)]
+#[allow(clippy::all)]
 pub mod cruby;
 pub mod cruby_extra;
 pub mod flag_tests;

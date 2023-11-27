@@ -42,8 +42,8 @@ pub const imemo_mmtk_objbuf: imemo_type = 15;
 impl VALUE {
     pub fn as_basic(self) -> *mut RBasic {
         let VALUE(cval) = self;
-        let rbasic_ptr = cval as *mut RBasic;
-        rbasic_ptr
+        
+        cval as *mut RBasic
     }
 
     pub fn basic_klass(self) -> VALUE {
@@ -58,8 +58,8 @@ pub fn my_special_const_p(value: VALUE) -> bool {
     let VALUE(cval) = value;
     let is_immediate = cval & RUBY_IMMEDIATE_MASK as usize != 0;
     let is_false = cval == RUBY_Qfalse as usize;
-    let result = is_immediate || is_false;
-    result
+    
+    is_immediate || is_false
 }
 
 pub fn robject_shape_id(flags: usize) -> u32 {
@@ -78,8 +78,8 @@ pub fn robject_ivptr_embedded(value: VALUE) -> Address {
 
 pub fn rarray_embed_len(flags: usize) -> usize {
     let masked = flags & RARRAY_EMBED_LEN_MASK as usize;
-    let shifted = masked >> RARRAY_EMBED_LEN_SHIFT;
-    shifted
+    
+    masked >> RARRAY_EMBED_LEN_SHIFT
 }
 
 pub fn rarray_embed_ary_addr(value: VALUE) -> Address {
