@@ -55,8 +55,10 @@ impl Scanning<Ruby> for VMScanning {
 
         if allow_fast_paths {
             let fast_path_taken = Self::scan_object_and_trace_edges_fast(object, object_tracer);
-            if cfg!(feature = "fast_paths_stats") && fast_path_taken {
-                fast_paths_stats::fast_path_taken();
+            if fast_path_taken {
+                if cfg!(feature = "fast_paths_stats") {
+                    fast_paths_stats::fast_path_taken();
+                }
                 return;
             }
         }
