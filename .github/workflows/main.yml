@@ -44,6 +44,7 @@ jobs:
 
       - name: Setup script dependencies
         run: ./.github/scripts/ci-setup-script-deps.sh
+        working-directory: ./git/mmtk-ruby
 
       - name: Determine Ruby repository and revision
         id: extract-ruby-revision
