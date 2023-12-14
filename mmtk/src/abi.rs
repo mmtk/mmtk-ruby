@@ -13,6 +13,9 @@ pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 const HAS_MOVED_GIVTBL: usize = 1 << 63;
 const HIDDEN_SIZE_MASK: usize = 0x0000FFFFFFFFFFFF;
 
+// Should keep in sync with C code.
+const RUBY_FL_EXIVAR: usize = 1 << 10;
+
 /// Provide convenient methods for accessing Ruby objects.
 /// TODO: Wrap C functions in `RubyUpcalls` as Rust-friendly methods.
 pub struct RubyObjectAccess {
@@ -66,6 +69,18 @@ impl RubyObjectAccess {
     pub fn set_payload_size(&self, size: usize) {
         debug_assert!((size & HIDDEN_SIZE_MASK) == size);
         self.update_hidden_field(|old| old & !HIDDEN_SIZE_MASK | size & HIDDEN_SIZE_MASK);
+    }
+
+    fn flags_field(&self) -> Address {
+        self.objref.to_raw_address()
+    }
+
+    pub fn load_flags(&self) -> usize {
+        unsafe { self.flags_field().load::<usize>() }
+    }
+
+    pub fn has_exivar_flag(&self) -> bool {
+        (self.load_flags() & RUBY_FL_EXIVAR) != 0
     }
 
     pub fn has_moved_givtbl(&self) -> bool {

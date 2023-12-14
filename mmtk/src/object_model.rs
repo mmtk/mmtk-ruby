@@ -43,7 +43,11 @@ impl ObjectModel<Ruby> for VMObjectModel {
         copy_context: &mut GCWorkerCopyContext<Ruby>,
     ) -> ObjectReference {
         let from_acc = RubyObjectAccess::from_objref(from);
-        let maybe_givtbl = from_acc.get_original_givtbl();
+        let maybe_givtbl = from_acc.has_exivar_flag().then(|| {
+            from_acc
+                .get_original_givtbl()
+                .unwrap_or_else(|| panic!("Object {} has FL_EXIVAR but no givtbl.", from))
+        });
         let from_start = from_acc.obj_start();
         let object_size = from_acc.object_size();
         let to_start = copy_context.alloc_copy(from, object_size, MIN_OBJ_ALIGN, 0, semantics);
