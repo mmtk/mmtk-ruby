@@ -42,11 +42,8 @@ jobs:
         with:
           path: ./git/mmtk-ruby
 
-      - name: Update python version
-        uses: actions/setup-python@v4
-        with:
-          # We need the tomllib from 3.11
-          python-version: '3.11'
+      - name: Setup script dependencies
+        run: ./.github/scripts/ci-setup-script-deps.sh
 
       - name: Determine Ruby repository and revision
         id: extract-ruby-revision

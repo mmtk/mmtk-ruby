@@ -1,5 +1,5 @@
 import argparse
-import tomllib
+import tomlkit
 import os
 
 parser = argparse.ArgumentParser(
@@ -12,7 +12,7 @@ parser.add_argument('--github-output', help='Print in the format of GITHUB_OUTPU
 args = parser.parse_args()
 
 with open(args.toml_path, "rb") as f:
-    toml_data = tomllib.load(f)
+    toml_data = tomlkit.load(f)
 
 ruby_node = toml_data["package"]["metadata"]["ci-repos"]["ruby"]
 repo = ruby_node["repo"]
