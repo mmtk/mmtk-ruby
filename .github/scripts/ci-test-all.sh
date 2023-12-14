@@ -2,6 +2,8 @@ set -xe
 
 source $(dirname "$0")/common.sh
 
+export RUST_BACKTRACE=1
+
 cd $RUBY_BUILD_PATH
 
 echo "============ Test all ($DEBUG_LEVEL) ============="

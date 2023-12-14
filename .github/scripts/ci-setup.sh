@@ -11,4 +11,4 @@ rustup component add rustfmt --toolchain $RUSTUP_TOOLCHAIN
 
 # Install dependencies
 sudo apt-get update -y
-sudo apt-get install dos2unix build-essential ruby-dev cowsay
+sudo apt-get install dos2unix build-essential ruby-dev
