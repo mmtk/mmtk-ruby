@@ -36,11 +36,11 @@ probe = "0.5"
 features = ["is_mmtk_object", "object_pinning"]
 
 # Uncomment the following lines to use mmtk-core from the official repository.
-git = "https://github.com/mmtk/mmtk-core.git"
-rev = "b66fa351c6e37e4a0672070aab5cd5864d150890"
+#git = "https://github.com/mmtk/mmtk-core.git"
+#rev = "b66fa351c6e37e4a0672070aab5cd5864d150890"
 
 # Uncomment the following line to use mmtk-core from a local repository.
-#path = "../../mmtk-core"
+path = "../../mmtk-core"
 
 [features]
 default = []

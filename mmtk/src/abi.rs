@@ -1,13 +1,12 @@
 use crate::api::RubyMutator;
 use crate::{upcalls, Ruby};
-use mmtk::scheduler::{GCController, GCWorker};
+use mmtk::scheduler::GCWorker;
 use mmtk::util::{Address, ObjectReference, VMMutatorThread, VMWorkerThread};
 
 // For the C binding
 pub const OBJREF_OFFSET: usize = 8;
 pub const MIN_OBJ_ALIGN: usize = 8; // Even on 32-bit machine.  A Ruby object is at least 40 bytes large.
 
-pub const GC_THREAD_KIND_CONTROLLER: libc::c_int = 0;
 pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
 const HAS_MOVED_GIVTBL: usize = 1 << 63;
@@ -244,10 +243,6 @@ impl GCThreadTLS {
         }
     }
 
-    pub fn for_controller(gc_context: *mut GCController<Ruby>) -> Self {
-        Self::new(GC_THREAD_KIND_CONTROLLER, gc_context as *mut libc::c_void)
-    }
-
     pub fn for_worker(gc_context: *mut GCWorker<Ruby>) -> Self {
         Self::new(GC_THREAD_KIND_WORKER, gc_context as *mut libc::c_void)
     }
@@ -266,7 +261,7 @@ impl GCThreadTLS {
         let result = &mut *ptr;
         debug_assert!({
             let kind = result.kind;
-            kind == GC_THREAD_KIND_CONTROLLER || kind == GC_THREAD_KIND_WORKER
+            kind == GC_THREAD_KIND_WORKER
         });
         result
     }
