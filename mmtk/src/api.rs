@@ -155,6 +155,11 @@ pub extern "C" fn mmtk_initialize_collection(tls: VMThread) {
 }
 
 #[no_mangle]
+pub extern "C" fn mmtk_uninitialize_collection() {
+    memory_manager::uninitialize_collection(mmtk())
+}
+
+#[no_mangle]
 pub extern "C" fn mmtk_enable_collection() {
     memory_manager::enable_collection(mmtk())
 }

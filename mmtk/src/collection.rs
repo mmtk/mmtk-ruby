@@ -37,7 +37,11 @@ impl Collection<Ruby> for VMCollection {
                 thread::Builder::new()
                     .name("MMTk Worker Thread".to_string())
                     .spawn(move || {
-                        debug!("Hello! This is MMTk Worker Thread running!");
+                        let ordinal = worker.ordinal;
+                        debug!(
+                            "Hello! This is MMTk Worker Thread running! ordinal: {}",
+                            ordinal
+                        );
                         crate::register_gc_thread(thread::current().id());
                         let ptr_worker = &mut *worker as *mut GCWorker<Ruby>;
                         let gc_thread_tls =
@@ -46,12 +50,12 @@ impl Collection<Ruby> for VMCollection {
                         memory_manager::start_worker(
                             mmtk(),
                             GCThreadTLS::to_vwt(gc_thread_tls),
-                            &mut worker,
+                            worker,
                         );
-
-                        // Currently all MMTk worker threads should run forever.
-                        // This is an unlikely event, but we log it anyway.
-                        warn!("An MMTk Worker Thread is quitting!");
+                        debug!(
+                            "An MMTk Worker Thread is quitting. Good bye! ordinal: {}",
+                            ordinal
+                        );
                         crate::unregister_gc_thread(thread::current().id());
                     })
                     .unwrap();

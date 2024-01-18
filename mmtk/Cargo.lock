@@ -375,7 +375,7 @@ dependencies = [
 
 [[package]]
 name = "mmtk"
-version = "0.22.0"
+version = "0.22.1"
 dependencies = [
  "atomic",
  "atomic-traits",
@@ -409,7 +409,7 @@ dependencies = [
 
 [[package]]
 name = "mmtk-macros"
-version = "0.22.0"
+version = "0.22.1"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
