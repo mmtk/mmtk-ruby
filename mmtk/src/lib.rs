@@ -11,7 +11,7 @@ use std::sync::Mutex;
 use std::thread::ThreadId;
 
 use abi::RubyUpcalls;
-use binding::{RubyBinding, RubyBindingFast};
+use binding::{RubyBinding, RubyBindingFast, RubyBindingFastMut};
 use mmtk::vm::edge_shape::{SimpleEdge, UnimplementedMemorySlice};
 use mmtk::vm::VMBinding;
 use mmtk::MMTK;
@@ -56,8 +56,11 @@ impl VMBinding for Ruby {
 pub static BINDING: OnceCell<RubyBinding> = OnceCell::new();
 
 /// Some data needs to be accessed fast.
+pub static BINDING_FAST: RubyBindingFast = RubyBindingFast::new();
+
+/// Some data needs to be accessed fast.
 /// We sacrifice safety for speed using unsynchronized global variables.
-pub static mut BINDING_FAST: RubyBindingFast = RubyBindingFast::new();
+pub static mut BINDING_FAST_MUT: RubyBindingFastMut = RubyBindingFastMut::new();
 
 pub fn binding<'b>() -> &'b RubyBinding {
     BINDING
