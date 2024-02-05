@@ -155,8 +155,13 @@ pub extern "C" fn mmtk_initialize_collection(tls: VMThread) {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_uninitialize_collection() {
-    memory_manager::uninitialize_collection(mmtk())
+pub extern "C" fn mmtk_prepare_to_fork() {
+    mmtk().prepare_to_fork();
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_after_fork(tls: VMThread) {
+    mmtk().after_fork(tls);
 }
 
 #[no_mangle]
