@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::sync::Mutex;
+use std::thread::JoinHandle;
 
 use libc::c_void;
 use mmtk::util::ObjectReference;
@@ -36,6 +37,7 @@ pub struct RubyBinding {
     pub weak_proc: WeakProcessor,
     pub ppp_registry: PPPRegistry,
     pub(crate) moved_givtbl: Mutex<HashMap<ObjectReference, MovedGIVTblEntry>>,
+    pub gc_thread_join_handles: Mutex<Vec<JoinHandle<()>>>
 }
 
 unsafe impl Sync for RubyBinding {}
@@ -58,6 +60,7 @@ impl RubyBinding {
             weak_proc: WeakProcessor::new(),
             ppp_registry: PPPRegistry::new(),
             moved_givtbl: Default::default(),
+            gc_thread_join_handles: Default::default(),
         }
     }
 
@@ -74,5 +77,21 @@ impl RubyBinding {
             *plan_name = Some(c_string);
         }
         plan_name.as_deref().unwrap().as_ptr()
+    }
+
+    pub fn join_all_gc_threads(&self) {
+        let handles = {
+            let mut guard = self.gc_thread_join_handles.lock().unwrap();
+            std::mem::take(&mut *guard)
+        };
+
+        debug!("Joining GC threads...");
+        let total = handles.len();
+        let mut joined = 0;
+        for handle in handles {
+            handle.join().unwrap();
+            joined += 1;
+            debug!("{joined}/{total} GC threads joined.");
+        }
     }
 }

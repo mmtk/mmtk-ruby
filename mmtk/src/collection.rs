@@ -32,34 +32,37 @@ impl Collection<Ruby> for VMCollection {
     }
 
     fn spawn_gc_thread(_tls: VMThread, ctx: GCThreadContext<Ruby>) {
-        match ctx {
-            GCThreadContext::Worker(mut worker) => {
-                thread::Builder::new()
-                    .name("MMTk Worker Thread".to_string())
-                    .spawn(move || {
-                        let ordinal = worker.ordinal;
-                        debug!(
-                            "Hello! This is MMTk Worker Thread running! ordinal: {}",
-                            ordinal
-                        );
-                        crate::register_gc_thread(thread::current().id());
-                        let ptr_worker = &mut *worker as *mut GCWorker<Ruby>;
-                        let gc_thread_tls =
-                            Box::into_raw(Box::new(GCThreadTLS::for_worker(ptr_worker)));
-                        (upcalls().init_gc_worker_thread)(gc_thread_tls);
-                        memory_manager::start_worker(
-                            mmtk(),
-                            GCThreadTLS::to_vwt(gc_thread_tls),
-                            worker,
-                        );
-                        debug!(
-                            "An MMTk Worker Thread is quitting. Good bye! ordinal: {}",
-                            ordinal
-                        );
-                        crate::unregister_gc_thread(thread::current().id());
-                    })
-                    .unwrap();
-            }
+        let join_handle = match ctx {
+            GCThreadContext::Worker(mut worker) => thread::Builder::new()
+                .name("MMTk Worker Thread".to_string())
+                .spawn(move || {
+                    let ordinal = worker.ordinal;
+                    debug!(
+                        "Hello! This is MMTk Worker Thread running! ordinal: {}",
+                        ordinal
+                    );
+                    crate::register_gc_thread(thread::current().id());
+                    let ptr_worker = &mut *worker as *mut GCWorker<Ruby>;
+                    let gc_thread_tls =
+                        Box::into_raw(Box::new(GCThreadTLS::for_worker(ptr_worker)));
+                    (upcalls().init_gc_worker_thread)(gc_thread_tls);
+                    memory_manager::start_worker(
+                        mmtk(),
+                        GCThreadTLS::to_vwt(gc_thread_tls),
+                        worker,
+                    );
+                    debug!(
+                        "An MMTk Worker Thread is quitting. Good bye! ordinal: {}",
+                        ordinal
+                    );
+                    crate::unregister_gc_thread(thread::current().id());
+                })
+                .unwrap(),
+        };
+
+        {
+            let mut handles = crate::binding().gc_thread_join_handles.lock().unwrap();
+            handles.push(join_handle);
         }
     }
 
