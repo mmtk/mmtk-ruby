@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::ffi::CString;
+use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
 use std::thread::JoinHandle;
 
@@ -13,12 +14,25 @@ use crate::ppp::PPPRegistry;
 use crate::weak_proc::WeakProcessor;
 use crate::Ruby;
 
-#[derive(Default)]
 pub struct RubyBindingFast {
-    pub suffix_size: usize,
+    pub gc_enabled: AtomicBool,
 }
 
 impl RubyBindingFast {
+    pub const fn new() -> Self {
+        Self {
+            // Mimic the old behavior when the gc_enabled flag was in mmtk-core.
+            // We may refactor it so that it is false by default.
+            gc_enabled: AtomicBool::new(true),
+        }
+    }
+}
+
+pub struct RubyBindingFastMut {
+    pub suffix_size: usize,
+}
+
+impl RubyBindingFastMut {
     pub const fn new() -> Self {
         Self { suffix_size: 0 }
     }
@@ -50,7 +64,7 @@ impl RubyBinding {
         upcalls: *const abi::RubyUpcalls,
     ) -> Self {
         unsafe {
-            crate::BINDING_FAST.suffix_size = binding_options.suffix_size;
+            crate::BINDING_FAST_MUT.suffix_size = binding_options.suffix_size;
         }
         Self {
             mmtk,
