@@ -102,7 +102,7 @@ impl RubyObjectAccess {
 
     pub fn suffix_size() -> usize {
         // In RACTOR_CHECK_MODE, Ruby hides a field after each object to hold the Ractor ID.
-        unsafe { crate::BINDING_FAST.suffix_size }
+        unsafe { crate::BINDING_FAST_MUT.suffix_size }
     }
 
     pub fn object_size(&self) -> usize {

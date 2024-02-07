@@ -2,6 +2,7 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use std::ffi::CStr;
+use std::sync::atomic::Ordering;
 
 use crate::abi;
 use crate::abi::RawVecOfObjRef;
@@ -11,6 +12,7 @@ use crate::binding;
 use crate::binding::RubyBinding;
 use crate::mmtk;
 use crate::Ruby;
+use crate::BINDING_FAST;
 use mmtk::memory_manager;
 use mmtk::memory_manager::mmtk_init;
 use mmtk::util::alloc::AllocatorInfo;
@@ -156,12 +158,12 @@ pub extern "C" fn mmtk_initialize_collection(tls: VMThread) {
 
 #[no_mangle]
 pub extern "C" fn mmtk_enable_collection() {
-    memory_manager::enable_collection(mmtk())
+    BINDING_FAST.gc_enabled.store(true, Ordering::Relaxed);
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_disable_collection() {
-    memory_manager::disable_collection(mmtk())
+    BINDING_FAST.gc_enabled.store(false, Ordering::Relaxed);
 }
 
 #[no_mangle]

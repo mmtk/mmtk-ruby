@@ -6,11 +6,16 @@ use mmtk::memory_manager;
 use mmtk::scheduler::*;
 use mmtk::util::{VMMutatorThread, VMThread, VMWorkerThread};
 use mmtk::vm::{Collection, GCThreadContext};
+use std::sync::atomic::Ordering;
 use std::thread;
 
 pub struct VMCollection {}
 
 impl Collection<Ruby> for VMCollection {
+    fn is_collection_enabled() -> bool {
+        crate::BINDING_FAST.gc_enabled.load(Ordering::Relaxed)
+    }
+
     fn stop_all_mutators<F>(tls: VMWorkerThread, mut mutator_visitor: F)
     where
         F: FnMut(&'static mut mmtk::Mutator<Ruby>),
