@@ -207,9 +207,7 @@ define_global_table_processor!(UpdateOverloadedCmeTable, {
     (crate::upcalls().update_overloaded_cme_table)()
 });
 
-define_global_table_processor!(UpdateCiTable, {
-    (crate::upcalls().update_ci_table)()
-});
+define_global_table_processor!(UpdateCiTable, { (crate::upcalls().update_ci_table)() });
 
 // Provide a shorthand `object.forward()`.
 trait Forwardable {
