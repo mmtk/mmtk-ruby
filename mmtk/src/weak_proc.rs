@@ -70,6 +70,7 @@ impl WeakProcessor {
             Box::new(UpdateObjIdTables) as _,
             Box::new(UpdateGlobalSymbolsTable) as _,
             Box::new(UpdateOverloadedCmeTable) as _,
+            Box::new(UpdateCiTable) as _,
         ])
     }
 
@@ -204,6 +205,10 @@ define_global_table_processor!(UpdateGlobalSymbolsTable, {
 
 define_global_table_processor!(UpdateOverloadedCmeTable, {
     (crate::upcalls().update_overloaded_cme_table)()
+});
+
+define_global_table_processor!(UpdateCiTable, {
+    (crate::upcalls().update_ci_table)()
 });
 
 // Provide a shorthand `object.forward()`.
