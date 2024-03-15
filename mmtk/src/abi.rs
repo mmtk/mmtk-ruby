@@ -363,6 +363,7 @@ pub struct RubyUpcalls {
     pub update_obj_id_tables: extern "C" fn(),
     pub update_global_symbols_table: extern "C" fn(),
     pub update_overloaded_cme_table: extern "C" fn(),
+    pub update_ci_table: extern "C" fn(),
     pub get_original_givtbl: extern "C" fn(object: ObjectReference) -> *mut libc::c_void,
     pub move_givtbl: extern "C" fn(old_objref: ObjectReference, new_objref: ObjectReference),
     pub vm_live_bytes: extern "C" fn() -> usize,
