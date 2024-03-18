@@ -51,7 +51,7 @@ pub struct RubyBinding {
     pub weak_proc: WeakProcessor,
     pub ppp_registry: PPPRegistry,
     pub(crate) moved_givtbl: Mutex<HashMap<ObjectReference, MovedGIVTblEntry>>,
-    pub gc_thread_join_handles: Mutex<Vec<JoinHandle<()>>>
+    pub gc_thread_join_handles: Mutex<Vec<JoinHandle<()>>>,
 }
 
 unsafe impl Sync for RubyBinding {}
