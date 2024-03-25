@@ -157,6 +157,17 @@ pub extern "C" fn mmtk_initialize_collection(tls: VMThread) {
 }
 
 #[no_mangle]
+pub extern "C" fn mmtk_prepare_to_fork() {
+    mmtk().prepare_to_fork();
+    binding().join_all_gc_threads();
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_after_fork(tls: VMThread) {
+    mmtk().after_fork(tls);
+}
+
+#[no_mangle]
 pub extern "C" fn mmtk_enable_collection() {
     BINDING_FAST.gc_enabled.store(true, Ordering::Relaxed);
 }
