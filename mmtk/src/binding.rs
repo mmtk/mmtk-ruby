@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::CString;
 use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
@@ -52,6 +52,7 @@ pub struct RubyBinding {
     pub ppp_registry: PPPRegistry,
     pub(crate) moved_givtbl: Mutex<HashMap<ObjectReference, MovedGIVTblEntry>>,
     pub gc_thread_join_handles: Mutex<Vec<JoinHandle<()>>>,
+    pub wb_unprotected_objects: Mutex<HashSet<ObjectReference>>,
 }
 
 unsafe impl Sync for RubyBinding {}
@@ -75,6 +76,7 @@ impl RubyBinding {
             ppp_registry: PPPRegistry::new(),
             moved_givtbl: Default::default(),
             gc_thread_join_handles: Default::default(),
+            wb_unprotected_objects: Default::default(),
         }
     }
 
@@ -107,5 +109,16 @@ impl RubyBinding {
             joined += 1;
             debug!("{joined}/{total} GC threads joined.");
         }
+    }
+
+    pub fn register_wb_unprotected_object(&self, object: ObjectReference) {
+        debug!("Registering WB-unprotected object: {}", object);
+        let mut objects = self.wb_unprotected_objects.lock().unwrap();
+        objects.insert(object);
+    }
+
+    pub fn is_object_wb_unprotected(&self, object: ObjectReference) -> bool {
+        let objects = self.wb_unprotected_objects.lock().unwrap();
+        objects.contains(&object)
     }
 }

@@ -12,6 +12,7 @@ use crate::binding;
 use crate::binding::RubyBinding;
 use crate::mmtk;
 use crate::Ruby;
+use crate::RubySlot;
 use crate::BINDING_FAST;
 use mmtk::memory_manager;
 use mmtk::memory_manager::mmtk_init;
@@ -324,4 +325,29 @@ pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
 #[no_mangle]
 pub extern "C" fn mmtk_is_pinned(object: ObjectReference) -> bool {
     mmtk::memory_manager::is_pinned::<Ruby>(object)
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_register_wb_unprotected_object(object: ObjectReference) {
+    crate::binding().register_wb_unprotected_object(object)
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_is_object_wb_unprotected(object: ObjectReference) -> bool {
+    crate::binding().is_object_wb_unprotected(object)
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_object_reference_write_post(
+    mutator: *mut RubyMutator,
+    object: ObjectReference,
+) {
+    let ignored_slot = RubySlot::from_address(Address::ZERO);
+    let ignored_target = ObjectReference::from_raw_address(Address::ZERO);
+    mmtk::memory_manager::object_reference_write_post(
+        unsafe { &mut *mutator },
+        object,
+        ignored_slot,
+        ignored_target,
+    )
 }

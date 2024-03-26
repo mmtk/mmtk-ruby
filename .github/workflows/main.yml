@@ -34,7 +34,7 @@ jobs:
       fail-fast: true
       matrix:
         debug-level: ["debug", "release"]
-        plan: ["MarkSweep", "Immix"]
+        plan: ["MarkSweep", "Immix", "StickyImmix"]
     env:
       DEBUG_LEVEL: ${{ matrix.debug-level }}
       CHOSEN_PLAN: ${{ matrix.plan }}

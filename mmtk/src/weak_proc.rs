@@ -71,6 +71,7 @@ impl WeakProcessor {
             Box::new(UpdateGlobalSymbolsTable) as _,
             Box::new(UpdateOverloadedCmeTable) as _,
             Box::new(UpdateCiTable) as _,
+            Box::new(UpdateWbUnprotectedObjectsList) as _,
         ])
     }
 
@@ -208,6 +209,37 @@ define_global_table_processor!(UpdateOverloadedCmeTable, {
 });
 
 define_global_table_processor!(UpdateCiTable, (crate::upcalls().update_ci_table)());
+
+struct UpdateWbUnprotectedObjectsList;
+
+impl GCWork<Ruby> for UpdateWbUnprotectedObjectsList {
+    fn do_work(&mut self, _worker: &mut GCWorker<Ruby>, _mmtk: &'static mmtk::MMTK<Ruby>) {
+        let mut objects = crate::binding().wb_unprotected_objects.try_lock().expect(
+            "Someone is holding the lock of wb_unprotected_objects during weak processing phase?",
+        );
+
+        let old_objects = std::mem::take(&mut *objects);
+
+        debug!("Updating {} WB-unprotected objects", old_objects.len());
+
+        for object in old_objects {
+            if object.is_reachable::<Ruby>() {
+                // Forward and add back to the candidate list.
+                let new_object = object.forward();
+                trace!(
+                    "Forwarding WB-unprotected object: {} -> {}",
+                    object,
+                    new_object
+                );
+                objects.insert(new_object);
+            } else {
+                trace!("Removing WB-unprotected object from list: {}", object);
+            }
+        }
+
+        debug!("Retained {} live WB-unprotected objects.", objects.len());
+    }
+}
 
 // Provide a shorthand `object.forward()`.
 trait Forwardable {

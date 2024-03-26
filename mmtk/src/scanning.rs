@@ -79,6 +79,30 @@ impl Scanning<Ruby> for VMScanning {
         Self::collect_object_roots_in("scan_vm_specific_roots", gc_tls, &mut factory, || {
             (upcalls().scan_vm_specific_roots)();
         });
+        let is_nursery_gc = (crate::mmtk().get_plan().generational())
+            .is_some_and(|gen| gen.is_current_gc_nursery());
+        if is_nursery_gc {
+            Self::collect_object_roots_in("wb_unprot_roots", gc_tls, &mut factory, || {
+                let objects = crate::binding()
+                    .wb_unprotected_objects
+                    .try_lock()
+                    .expect("Someone is holding the lock of wb_unprotected_objects?");
+                for object in objects.iter().copied() {
+                    if object.is_reachable::<Ruby>() {
+                        debug!(
+                            "[wb_unprot_roots] Visiting WB-unprotected object (parent): {}",
+                            object
+                        );
+                        (upcalls().scan_object_ruby_style)(object);
+                    } else {
+                        debug!(
+                            "[wb_unprot_roots] Skipping young WB-unprotected object (parent): {}",
+                            object
+                        );
+                    }
+                }
+            });
+        }
     }
 
     fn supports_return_barrier() -> bool {
