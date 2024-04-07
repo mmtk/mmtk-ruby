@@ -17,7 +17,7 @@ jobs:
       fail-fast: true
     steps:
       - name: Checkout MMTk Ruby binding
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: ./git/mmtk-ruby
       - name: Setup environment
@@ -34,8 +34,10 @@ jobs:
       fail-fast: true
       matrix:
         debug-level: ["debug", "release"]
+        plan: ["MarkSweep", "Immix"]
     env:
       DEBUG_LEVEL: ${{ matrix.debug-level }}
+      CHOSEN_PLAN: ${{ matrix.plan }}
     steps:
       - name: Checkout MMTk Ruby binding
         uses: actions/checkout@v4
