@@ -37,53 +37,37 @@ impl Collection<Ruby> for VMCollection {
     }
 
     fn spawn_gc_thread(_tls: VMThread, ctx: GCThreadContext<Ruby>) {
-        match ctx {
-            GCThreadContext::Controller(mut controller) => {
-                thread::Builder::new()
-                    .name("MMTk Controller Thread".to_string())
-                    .spawn(move || {
-                        debug!("Hello! This is MMTk Controller Thread running!");
-                        crate::register_gc_thread(thread::current().id());
-                        let ptr_controller = &mut *controller as *mut GCController<Ruby>;
-                        let gc_thread_tls =
-                            Box::into_raw(Box::new(GCThreadTLS::for_controller(ptr_controller)));
-                        (upcalls().init_gc_worker_thread)(gc_thread_tls);
-                        memory_manager::start_control_collector(
-                            mmtk(),
-                            GCThreadTLS::to_vwt(gc_thread_tls),
-                            &mut controller,
-                        );
+        let join_handle = match ctx {
+            GCThreadContext::Worker(mut worker) => thread::Builder::new()
+                .name("MMTk Worker Thread".to_string())
+                .spawn(move || {
+                    let ordinal = worker.ordinal;
+                    debug!(
+                        "Hello! This is MMTk Worker Thread running! ordinal: {}",
+                        ordinal
+                    );
+                    crate::register_gc_thread(thread::current().id());
+                    let ptr_worker = &mut *worker as *mut GCWorker<Ruby>;
+                    let gc_thread_tls =
+                        Box::into_raw(Box::new(GCThreadTLS::for_worker(ptr_worker)));
+                    (upcalls().init_gc_worker_thread)(gc_thread_tls);
+                    memory_manager::start_worker(
+                        mmtk(),
+                        GCThreadTLS::to_vwt(gc_thread_tls),
+                        worker,
+                    );
+                    debug!(
+                        "An MMTk Worker Thread is quitting. Good bye! ordinal: {}",
+                        ordinal
+                    );
+                    crate::unregister_gc_thread(thread::current().id());
+                })
+                .unwrap(),
+        };
 
-                        // Currently the MMTk controller thread should run forever.
-                        // This is an unlikely event, but we log it anyway.
-                        warn!("The MMTk Controller Thread is quitting!");
-                        crate::unregister_gc_thread(thread::current().id());
-                    })
-                    .unwrap();
-            }
-            GCThreadContext::Worker(mut worker) => {
-                thread::Builder::new()
-                    .name("MMTk Worker Thread".to_string())
-                    .spawn(move || {
-                        debug!("Hello! This is MMTk Worker Thread running!");
-                        crate::register_gc_thread(thread::current().id());
-                        let ptr_worker = &mut *worker as *mut GCWorker<Ruby>;
-                        let gc_thread_tls =
-                            Box::into_raw(Box::new(GCThreadTLS::for_worker(ptr_worker)));
-                        (upcalls().init_gc_worker_thread)(gc_thread_tls);
-                        memory_manager::start_worker(
-                            mmtk(),
-                            GCThreadTLS::to_vwt(gc_thread_tls),
-                            &mut worker,
-                        );
-
-                        // Currently all MMTk worker threads should run forever.
-                        // This is an unlikely event, but we log it anyway.
-                        warn!("An MMTk Worker Thread is quitting!");
-                        crate::unregister_gc_thread(thread::current().id());
-                    })
-                    .unwrap();
-            }
+        {
+            let mut handles = crate::binding().gc_thread_join_handles.lock().unwrap();
+            handles.push(join_handle);
         }
     }
 
