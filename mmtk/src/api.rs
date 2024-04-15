@@ -305,7 +305,8 @@ pub extern "C" fn mmtk_gc_poll(tls: VMMutatorThread) {
 pub extern "C" fn mmtk_get_immix_bump_ptr_offset() -> usize {
     let AllocatorInfo::BumpPointer {
         bump_pointer_offset,
-    } = AllocatorInfo::new::<Ruby>(AllocatorSelector::Immix(0)) else {
+    } = AllocatorInfo::new::<Ruby>(AllocatorSelector::Immix(0))
+    else {
         panic!("Expected BumpPointer");
     };
     bump_pointer_offset
