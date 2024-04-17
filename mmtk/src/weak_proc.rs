@@ -122,7 +122,7 @@ impl GCWork<Ruby> for ProcessObjFreeCandidates {
         let mut new_candidates = Vec::new();
 
         for object in obj_free_candidates.iter().copied() {
-            if object.is_reachable() {
+            if object.is_reachable::<Ruby>() {
                 // Forward and add back to the candidate list.
                 let new_object = object.forward();
                 trace!(
@@ -216,6 +216,6 @@ trait Forwardable {
 
 impl Forwardable for ObjectReference {
     fn forward(&self) -> Self {
-        self.get_forwarded_object().unwrap_or(*self)
+        self.get_forwarded_object::<Ruby>().unwrap_or(*self)
     }
 }

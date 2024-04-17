@@ -70,8 +70,8 @@ impl PPPRegistry {
 
             probe!(mmtk_ruby, remove_dead_ppps_start, ppps.len());
             ppps.retain_mut(|obj| {
-                if obj.is_live() {
-                    *obj = obj.get_forwarded_object().unwrap_or(*obj);
+                if obj.is_live::<Ruby>() {
+                    *obj = obj.get_forwarded_object::<Ruby>().unwrap_or(*obj);
                     true
                 } else {
                     log::trace!("  PPP removed: {}", *obj);
