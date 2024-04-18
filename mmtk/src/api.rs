@@ -148,7 +148,7 @@ pub extern "C" fn mmtk_post_alloc(
 
 #[no_mangle]
 pub extern "C" fn mmtk_will_never_move(object: ObjectReference) -> bool {
-    !object.is_movable()
+    !object.is_movable::<Ruby>()
 }
 
 #[no_mangle]
@@ -199,18 +199,18 @@ pub extern "C" fn mmtk_total_bytes() -> usize {
 
 #[no_mangle]
 pub extern "C" fn mmtk_is_reachable(object: ObjectReference) -> bool {
-    object.is_reachable()
+    object.is_reachable::<Ruby>()
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_is_live_object(object: ObjectReference) -> bool {
-    memory_manager::is_live_object(object)
+    memory_manager::is_live_object::<Ruby>(object)
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_get_forwarded_object(object: ObjectReference) -> ObjectReference {
     object
-        .get_forwarded_object()
+        .get_forwarded_object::<Ruby>()
         .unwrap_or(ObjectReference::NULL)
 }
 
