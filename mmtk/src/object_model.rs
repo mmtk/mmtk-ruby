@@ -51,11 +51,13 @@ impl ObjectModel<Ruby> for VMObjectModel {
         let from_start = from_acc.obj_start();
         let object_size = from_acc.object_size();
         let to_start = copy_context.alloc_copy(from, object_size, MIN_OBJ_ALIGN, 0, semantics);
+        debug_assert!(!to_start.is_zero());
         let to_payload = to_start.add(OBJREF_OFFSET);
         unsafe {
             copy_nonoverlapping::<u8>(from_start.to_ptr(), to_start.to_mut_ptr(), object_size);
         }
-        let to_obj = ObjectReference::from_raw_address(to_payload);
+        // unsafe: `to_payload`` cannot be zero because `alloc_copy`` never returns zero.
+        let to_obj = unsafe { ObjectReference::from_raw_address_unchecked(to_payload) };
         copy_context.post_copy(to_obj, object_size, semantics);
         trace!("Copied object from {} to {}", from, to_obj);
 
@@ -123,7 +125,8 @@ impl ObjectModel<Ruby> for VMObjectModel {
     }
 
     fn address_to_ref(addr: Address) -> ObjectReference {
-        ObjectReference::from_raw_address(addr)
+        debug_assert!(!addr.is_zero());
+        unsafe { ObjectReference::from_raw_address_unchecked(addr) }
     }
 
     fn get_size_when_copied(object: ObjectReference) -> usize {

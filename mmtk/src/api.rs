@@ -17,6 +17,7 @@ use mmtk::memory_manager;
 use mmtk::memory_manager::mmtk_init;
 use mmtk::util::alloc::AllocatorInfo;
 use mmtk::util::alloc::AllocatorSelector;
+use mmtk::util::apiutils::NullableObjectReference;
 use mmtk::util::constants::MIN_OBJECT_SIZE;
 use mmtk::util::options::GCTriggerSelector;
 use mmtk::util::options::PlanSelector;
@@ -208,10 +209,8 @@ pub extern "C" fn mmtk_is_live_object(object: ObjectReference) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_get_forwarded_object(object: ObjectReference) -> ObjectReference {
-    object
-        .get_forwarded_object::<Ruby>()
-        .unwrap_or(ObjectReference::NULL)
+pub extern "C" fn mmtk_get_forwarded_object(object: ObjectReference) -> NullableObjectReference {
+    object.get_forwarded_object::<Ruby>().into()
 }
 
 #[no_mangle]
