@@ -36,6 +36,11 @@ impl PPPRegistry {
     pub fn pin_ppp_children(&self, tls: VMWorkerThread) {
         log::debug!("Pin children of PPPs...");
 
+        if !crate::mmtk().get_plan().current_gc_may_move_object() {
+            log::debug!("The current GC is non-moving.  Skipped pinning PPP children.");
+            return;
+        }
+
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
         let worker = gc_tls.worker();
 
@@ -82,7 +87,10 @@ impl PPPRegistry {
         }
 
         log::debug!("Unpinning pinned PPP children...");
-        {
+
+        if !crate::mmtk().get_plan().current_gc_may_move_object() {
+            log::debug!("The current GC is non-moving.  Skipped unpinning PPP children.");
+        } else {
             let mut pinned_ppps = self
                 .pinned_ppp_children
                 .try_lock()
