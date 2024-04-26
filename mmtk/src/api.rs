@@ -17,7 +17,7 @@ use mmtk::memory_manager;
 use mmtk::memory_manager::mmtk_init;
 use mmtk::util::alloc::AllocatorInfo;
 use mmtk::util::alloc::AllocatorSelector;
-use mmtk::util::apiutils::NullableObjectReference;
+use mmtk::util::api_util::NullableObjectReference;
 use mmtk::util::constants::MIN_OBJECT_SIZE;
 use mmtk::util::options::GCTriggerSelector;
 use mmtk::util::options::PlanSelector;

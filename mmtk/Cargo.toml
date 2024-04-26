@@ -37,7 +37,7 @@ features = ["is_mmtk_object", "object_pinning"]
 
 # Uncomment the following lines to use mmtk-core from the official repository.
 git = "https://github.com/wks/mmtk-core.git"
-rev = "6aa75cd72247d12b9568dc321c46feca6572a512"
+rev = "edd0d0af8104446e2effdfd7aea6e6d35800217a"
 
 # Uncomment the following line to use mmtk-core from a local repository.
 # path = "../../mmtk-core"
