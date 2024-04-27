@@ -20,6 +20,7 @@ typedef rb_thread_t* MMTk_VMMutatorThread;
 typedef struct MMTk_GCThreadTLS* MMTk_VMWorkerThread;
 typedef void* MMTk_Address;
 typedef void* MMTk_ObjectReference;
+typedef void* MMTk_NullableObjectReference;
 typedef uint32_t MMTk_AllocationSemantics;
 """
 
@@ -34,6 +35,7 @@ typedef uint32_t MMTk_AllocationSemantics;
 "VMWorkerThread" = "MMTk_VMWorkerThread"
 "Address" = "MMTk_Address"
 "ObjectReference" = "MMTk_ObjectReference"
+"NullableObjectReference" = "MMTk_NullableObjectReference"
 "RawVecOfObjRef" = "MMTk_RawVecOfObjRef"
 "AllocationSemantics" = "MMTk_AllocationSemantics"
 "GC_THREAD_KIND_CONTROLLER" = "MMTK_GC_THREAD_KIND_CONTROLLER"
