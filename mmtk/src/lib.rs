@@ -12,7 +12,7 @@ use std::thread::ThreadId;
 
 use abi::RubyUpcalls;
 use binding::{RubyBinding, RubyBindingFast, RubyBindingFastMut};
-use mmtk::vm::edge_shape::{SimpleEdge, UnimplementedMemorySlice};
+use mmtk::vm::slot::{SimpleSlot, UnimplementedMemorySlice};
 use mmtk::vm::VMBinding;
 use mmtk::MMTK;
 use once_cell::sync::OnceCell;
@@ -31,15 +31,15 @@ pub mod weak_proc;
 #[derive(Default)]
 pub struct Ruby;
 
-/// Ruby edge type, i.e. a slot that holds a VALUE.
-/// Currently we use SimpleEdge.
-/// It doesn't matter, becaues we have not started using edge-enqueuing, yet.
-pub type RubyEdge = SimpleEdge;
+/// Ruby slot type, i.e. a slot that holds a VALUE.
+/// Currently we use SimpleSlot.
+/// It doesn't matter, becaues we have not started using slot-enqueuing, yet.
+pub type RubySlot = SimpleSlot;
 
 /// Ruby memory slice, i.e. an array of VALUEs.
 /// It is used by array-copy barriers which is supposed to perform bettern than copying array
 /// elements one by one.  At this moment, we just leave it unimplemented.
-pub type RubyMemorySlice = UnimplementedMemorySlice<RubyEdge>;
+pub type RubyMemorySlice = UnimplementedMemorySlice<RubySlot>;
 
 impl VMBinding for Ruby {
     type VMObjectModel = object_model::VMObjectModel;
@@ -48,7 +48,7 @@ impl VMBinding for Ruby {
     type VMActivePlan = active_plan::VMActivePlan;
     type VMReferenceGlue = reference_glue::VMReferenceGlue;
 
-    type VMEdge = RubyEdge;
+    type VMSlot = RubySlot;
     type VMMemorySlice = RubyMemorySlice;
 }
 
