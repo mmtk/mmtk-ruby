@@ -16,5 +16,6 @@ find $BINDING_PATH \
     -o -name '*.toml' \
     -o -name '*.md' \
     -o -name '*.sh' \
-    -o -name '*.yml' \
-    -exec ./check-lineends.sh '{}' \;
+    -o -name '*.yml' | while read -r file; do
+    $BINDING_PATH/.github/scripts/check-lineends.sh "$file"
+done
