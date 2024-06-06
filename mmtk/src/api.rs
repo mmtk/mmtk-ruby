@@ -83,6 +83,27 @@ pub extern "C" fn mmtk_builder_set_plan(builder: *mut MMTKBuilder, plan_name: *c
     builder.options.plan.set(plan_selector);
 }
 
+/// Query if the selected plan is MarkSweep.
+#[no_mangle]
+pub extern "C" fn mmtk_builder_is_mark_sweep(builder: *mut MMTKBuilder) -> bool {
+    let builder = unsafe { &mut *builder };
+    matches!(*builder.options.plan, PlanSelector::MarkSweep)
+}
+
+/// Query if the selected plan is Immix.
+#[no_mangle]
+pub extern "C" fn mmtk_builder_is_immix(builder: *mut MMTKBuilder) -> bool {
+    let builder = unsafe { &mut *builder };
+    matches!(*builder.options.plan, PlanSelector::Immix)
+}
+
+/// Query if the selected plan is StickyImmix.
+#[no_mangle]
+pub extern "C" fn mmtk_builder_is_sticky_immix(builder: *mut MMTKBuilder) -> bool {
+    let builder = unsafe { &mut *builder };
+    matches!(*builder.options.plan, PlanSelector::StickyImmix)
+}
+
 /// Build an MMTk instance.
 ///
 /// -   `builder` is the pointer to the `MMTKBuilder` instance created by the
