@@ -13,7 +13,7 @@ case $DEBUG_LEVEL in
         ;;
     release)
         TEST_CASES=$(cat $BINDING_PATH/ruby-test-cases.txt | grep -v '#' | ruby -ne 'puts "../#{$_}"' | xargs)
-        make test-all TESTS="$TEST_CASES" RUN_OPTS="--mmtk-plan=$CHOSEN_PLAN" TESTOPTS="-v"
+        make test-all TESTS="$TEST_CASES" RUN_OPTS="--mmtk-plan=$CHOSEN_PLAN" TESTOPTS="-v -j${CI_JOBS}"
         ;;
     *)
         echo "Unexpected debug level: $DEBUG_LEVEL"

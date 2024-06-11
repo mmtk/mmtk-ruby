@@ -5,6 +5,8 @@ RUBY_INSTALL_PATH=$RUBY_BUILD_PATH/install
 RUSTUP_TOOLCHAIN=`cat $BINDING_PATH/mmtk/rust-toolchain`
 DEFAULT_PLAN=Immix
 
+CI_JOBS=4
+
 if test -z "$CHOSEN_PLAN"; then
     CHOSEN_PLAN=$DEFAULT_PLAN
 fi
