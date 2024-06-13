@@ -36,7 +36,9 @@ pub type RubyMutator = Mutator<Ruby>;
 /// This instance shall be consumed by `mmtk_init_binding`.
 #[no_mangle]
 pub extern "C" fn mmtk_builder_default() -> *mut MMTKBuilder {
-    let builder = MMTKBuilder::new_no_env_vars();
+    let mut builder = MMTKBuilder::new_no_env_vars();
+    // We don't use the Java-style finalization framework in mmtk-core.
+    builder.options.no_finalizer.set(true);
     Box::into_raw(Box::new(builder))
 }
 
