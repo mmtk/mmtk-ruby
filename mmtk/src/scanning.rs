@@ -1,7 +1,8 @@
 use crate::abi::GCThreadTLS;
 
+use crate::utils::ChunkedVecCollector;
 use crate::{upcalls, Ruby, RubySlot};
-use mmtk::scheduler::GCWorker;
+use mmtk::scheduler::{GCWork, GCWorker, WorkBucketStage};
 use mmtk::util::{ObjectReference, VMWorkerThread};
 use mmtk::vm::{ObjectTracer, RootsWorkFactory, Scanning, SlotVisitor};
 use mmtk::{Mutator, MutatorContext};
@@ -74,34 +75,52 @@ impl Scanning<Ruby> for VMScanning {
         });
     }
 
-    fn scan_vm_specific_roots(tls: VMWorkerThread, mut factory: impl RootsWorkFactory<RubySlot>) {
+    fn scan_vm_specific_roots(tls: VMWorkerThread, factory: impl RootsWorkFactory<RubySlot>) {
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
-        Self::collect_object_roots_in("scan_vm_specific_roots", gc_tls, &mut factory, || {
-            (upcalls().scan_vm_specific_roots)();
-        });
-        let is_nursery_gc = (crate::mmtk().get_plan().generational())
-            .is_some_and(|gen| gen.is_current_gc_nursery());
-        if is_nursery_gc {
-            Self::collect_object_roots_in("wb_unprot_roots", gc_tls, &mut factory, || {
-                let objects = crate::binding()
+        let root_scanning_work_packets: Vec<Box<dyn GCWork<Ruby>>> = vec![
+            Box::new(ScanVMRoots::new(factory.clone())),
+            Box::new(ScanFinalizerTblRoots::new(factory.clone())),
+            Box::new(ScanEndProcRoots::new(factory.clone())),
+            Box::new(ScanGlobalTblRoots::new(factory.clone())),
+            Box::new(ScanObjToIdTblRoots::new(factory.clone())),
+            Box::new(ScanMiscRoots::new(factory.clone())),
+            Box::new(ScanFinalJobsRoots::new(factory.clone())),
+        ];
+        gc_tls.worker().scheduler().work_buckets[WorkBucketStage::Prepare]
+            .bulk_add(root_scanning_work_packets);
+
+        // Generate WB-unprotected roots scanning work packets
+
+        'gen_wb_unprotected_work: {
+            let is_nursery_gc = (crate::mmtk().get_plan().generational())
+                .is_some_and(|gen| gen.is_current_gc_nursery());
+            if !is_nursery_gc {
+                break 'gen_wb_unprotected_work;
+            }
+
+            let vecs = {
+                let guard = crate::binding()
                     .wb_unprotected_objects
                     .try_lock()
                     .expect("Someone is holding the lock of wb_unprotected_objects?");
-                for object in objects.iter().copied() {
-                    if object.is_reachable::<Ruby>() {
-                        debug!(
-                            "[wb_unprot_roots] Visiting WB-unprotected object (parent): {}",
-                            object
-                        );
-                        (upcalls().scan_object_ruby_style)(object);
-                    } else {
-                        debug!(
-                            "[wb_unprot_roots] Skipping young WB-unprotected object (parent): {}",
-                            object
-                        );
-                    }
+                if guard.is_empty() {
+                    break 'gen_wb_unprotected_work;
                 }
-            });
+
+                let mut collector = ChunkedVecCollector::new(128);
+                collector.extend(guard.iter().copied());
+                collector.into_vecs()
+            };
+
+            let packets = vecs
+                .into_iter()
+                .map(|objects| {
+                    let factory = factory.clone();
+                    Box::new(ScanWbUnprotectedRoots { factory, objects }) as _
+                })
+                .collect::<Vec<_>>();
+
+            gc_tls.worker().scheduler().work_buckets[WorkBucketStage::Prepare].bulk_add(packets);
         }
     }
 
@@ -135,7 +154,7 @@ impl Scanning<Ruby> for VMScanning {
 impl VMScanning {
     const OBJECT_BUFFER_SIZE: usize = 4096;
 
-    fn collect_object_roots_in<F: FnMut()>(
+    fn collect_object_roots_in<F: FnOnce()>(
         root_scan_kind: &str,
         gc_tls: &mut GCThreadTLS,
         factory: &mut impl RootsWorkFactory<RubySlot>,
@@ -170,5 +189,105 @@ impl VMScanning {
         if !buffer.is_empty() {
             factory.create_process_pinning_roots_work(buffer);
         }
+    }
+}
+
+trait GlobaRootScanningWork {
+    type F: RootsWorkFactory<RubySlot>;
+    const NAME: &'static str;
+
+    fn new(factory: Self::F) -> Self;
+    fn scan_roots();
+    fn roots_work_factory(&mut self) -> &mut Self::F;
+
+    fn do_work(&mut self, worker: &mut GCWorker<Ruby>, _mmtk: &'static mmtk::MMTK<Ruby>) {
+        let gc_tls = unsafe { GCThreadTLS::from_vwt_check(worker.tls) };
+
+        let factory = self.roots_work_factory();
+
+        VMScanning::collect_object_roots_in(Self::NAME, gc_tls, factory, || {
+            Self::scan_roots();
+        });
+    }
+}
+
+macro_rules! define_global_root_scanner {
+    ($name: ident, $code: expr) => {
+        struct $name<F: RootsWorkFactory<RubySlot>> {
+            factory: F,
+        }
+        impl<F: RootsWorkFactory<RubySlot>> GlobaRootScanningWork for $name<F> {
+            type F = F;
+            const NAME: &'static str = stringify!($name);
+            fn new(factory: Self::F) -> Self {
+                Self { factory }
+            }
+            fn scan_roots() {
+                $code
+            }
+            fn roots_work_factory(&mut self) -> &mut Self::F {
+                &mut self.factory
+            }
+        }
+        impl<F: RootsWorkFactory<RubySlot>> GCWork<Ruby> for $name<F> {
+            fn do_work(&mut self, worker: &mut GCWorker<Ruby>, mmtk: &'static mmtk::MMTK<Ruby>) {
+                GlobaRootScanningWork::do_work(self, worker, mmtk);
+            }
+        }
+    };
+}
+
+define_global_root_scanner!(ScanVMRoots, {
+    (crate::upcalls().scan_vm_roots)();
+});
+
+define_global_root_scanner!(ScanFinalizerTblRoots, {
+    (crate::upcalls().scan_finalizer_tbl_roots)();
+});
+
+define_global_root_scanner!(ScanEndProcRoots, {
+    (crate::upcalls().scan_end_proc_roots)();
+});
+
+define_global_root_scanner!(ScanGlobalTblRoots, {
+    (crate::upcalls().scan_global_tbl_roots)();
+});
+
+define_global_root_scanner!(ScanObjToIdTblRoots, {
+    (crate::upcalls().scan_obj_to_id_tbl_roots)();
+});
+
+define_global_root_scanner!(ScanMiscRoots, {
+    (crate::upcalls().scan_misc_roots)();
+});
+
+define_global_root_scanner!(ScanFinalJobsRoots, {
+    (crate::upcalls().scan_final_jobs_roots)();
+});
+
+struct ScanWbUnprotectedRoots<F: RootsWorkFactory<RubySlot>> {
+    factory: F,
+    objects: Vec<ObjectReference>,
+}
+
+impl<F: RootsWorkFactory<RubySlot>> GCWork<Ruby> for ScanWbUnprotectedRoots<F> {
+    fn do_work(&mut self, worker: &mut GCWorker<Ruby>, _mmtk: &'static mmtk::MMTK<Ruby>) {
+        let gc_tls = unsafe { GCThreadTLS::from_vwt_check(worker.tls) };
+        VMScanning::collect_object_roots_in("wb_unprot_roots", gc_tls, &mut self.factory, || {
+            for object in self.objects.iter().copied() {
+                if object.is_reachable::<Ruby>() {
+                    debug!(
+                        "[wb_unprot_roots] Visiting WB-unprotected object (parent): {}",
+                        object
+                    );
+                    (upcalls().scan_object_ruby_style)(object);
+                } else {
+                    debug!(
+                        "[wb_unprot_roots] Skipping young WB-unprotected object (parent): {}",
+                        object
+                    );
+                }
+            }
+        });
     }
 }
