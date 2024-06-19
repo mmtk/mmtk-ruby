@@ -12,7 +12,7 @@ edition = "2021"
 # Metadata for the Ruby repository
 [package.metadata.ci-repos.ruby]
 repo = "mmtk/ruby" # This is used by actions/checkout, so the format is "owner/repo", not URL.
-rev = "d30a2d3f5dbd490e4ae17ea872db530e926cc906"
+rev = "e3fe53d198c6d1aea79ee4a90369b1f46a2c5a44"
 
 [lib]
 name = "mmtk_ruby"
@@ -37,7 +37,7 @@ features = ["is_mmtk_object", "object_pinning", "sticky_immix_non_moving_nursery
 
 # Uncomment the following lines to use mmtk-core from the official repository.
 git = "https://github.com/mmtk/mmtk-core.git"
-rev = "47562b74c73ec74ab46e9b578fe3919346010b77"
+rev = "3be73b8048df17f1f2bd019d0b109488a2c5e313"
 
 # Uncomment the following line to use mmtk-core from a local repository.
 # path = "../../mmtk-core"
