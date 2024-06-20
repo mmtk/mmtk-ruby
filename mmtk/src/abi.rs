@@ -15,6 +15,10 @@ const HIDDEN_SIZE_MASK: usize = 0x0000FFFFFFFFFFFF;
 // Should keep in sync with C code.
 const RUBY_FL_EXIVAR: usize = 1 << 10;
 
+// An opaque type for the C counterpart.
+#[allow(non_camel_case_types)]
+pub struct st_table;
+
 /// Provide convenient methods for accessing Ruby objects.
 /// TODO: Wrap C functions in `RubyUpcalls` as Rust-friendly methods.
 pub struct RubyObjectAccess {
@@ -364,15 +368,31 @@ pub struct RubyUpcalls {
     pub call_gc_mark_children: extern "C" fn(object: ObjectReference),
     pub call_obj_free: extern "C" fn(object: ObjectReference),
     pub cleanup_generic_iv_tbl: extern "C" fn(),
+    pub get_original_givtbl: extern "C" fn(object: ObjectReference) -> *mut libc::c_void,
+    pub move_givtbl: extern "C" fn(old_objref: ObjectReference, new_objref: ObjectReference),
+    pub vm_live_bytes: extern "C" fn() -> usize,
     pub update_frozen_strings_table: extern "C" fn(),
     pub update_finalizer_table: extern "C" fn(),
     pub update_obj_id_tables: extern "C" fn(),
     pub update_global_symbols_table: extern "C" fn(),
     pub update_overloaded_cme_table: extern "C" fn(),
     pub update_ci_table: extern "C" fn(),
-    pub get_original_givtbl: extern "C" fn(object: ObjectReference) -> *mut libc::c_void,
-    pub move_givtbl: extern "C" fn(old_objref: ObjectReference, new_objref: ObjectReference),
-    pub vm_live_bytes: extern "C" fn() -> usize,
+    pub get_frozen_strings_table: extern "C" fn() -> *mut st_table,
+    pub get_finalizer_table: extern "C" fn() -> *mut st_table,
+    pub get_obj_id_tables: extern "C" fn() -> *mut st_table,
+    pub get_global_symbols_table: extern "C" fn() -> *mut st_table,
+    pub get_overloaded_cme_table: extern "C" fn() -> *mut st_table,
+    pub get_ci_table: extern "C" fn() -> *mut st_table,
+    pub st_get_size_info: extern "C" fn(
+        table: *const st_table,
+        entries_start: *mut libc::size_t,
+        entries_bound: *mut libc::size_t,
+        bins_num: *mut libc::size_t,
+    ),
+    pub st_update_entries_range:
+        extern "C" fn(table: *mut st_table, begin: libc::size_t, end: libc::size_t),
+    pub st_update_bins_range:
+        extern "C" fn(table: *mut st_table, begin: libc::size_t, end: libc::size_t),
 }
 
 unsafe impl Sync for RubyUpcalls {}

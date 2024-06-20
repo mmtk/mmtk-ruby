@@ -1,3 +1,10 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+use atomic_refcell::AtomicRefCell;
+use mmtk::scheduler::{GCWork, GCWorker, WorkBucketStage};
+
+use crate::Ruby;
+
 pub struct ChunkedVecCollector<T> {
     vecs: Vec<Vec<T>>,
     current_vec: Vec<T>,
@@ -38,6 +45,42 @@ impl<A> Extend<A> for ChunkedVecCollector<A> {
     fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T) {
         for item in iter {
             self.add(item);
+        }
+    }
+}
+
+pub struct AfterAll {
+    counter: AtomicUsize,
+    stage: WorkBucketStage,
+    packets: AtomicRefCell<Vec<Box<dyn GCWork<Ruby>>>>,
+}
+
+impl AfterAll {
+    pub fn new(stage: WorkBucketStage) -> Self {
+        Self {
+            counter: AtomicUsize::new(0),
+            stage,
+            packets: AtomicRefCell::new(vec![]),
+        }
+    }
+
+    pub fn add_packets(&self, mut packets: Vec<Box<dyn GCWork<Ruby>>>) {
+        let mut borrow = self.packets.borrow_mut();
+        borrow.append(&mut packets);
+    }
+
+    pub fn count_up(&self, n: usize) {
+        self.counter.fetch_add(n, Ordering::SeqCst);
+    }
+
+    pub fn count_down(&self, worker: &mut GCWorker<Ruby>) {
+        let old = self.counter.fetch_sub(1, Ordering::SeqCst);
+        if old == 1 {
+            let packets = {
+                let mut borrow = self.packets.borrow_mut();
+                std::mem::take(borrow.as_mut())
+            };
+            worker.scheduler().work_buckets[self.stage].bulk_add(packets);
         }
     }
 }
