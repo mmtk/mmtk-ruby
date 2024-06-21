@@ -76,16 +76,24 @@ impl WeakProcessor {
             Box::new(UpdateWbUnprotectedObjectsList) as _,
         ]);
 
+        let forward = crate::mmtk().get_plan().current_gc_may_move_object();
+
         // Experimenting with frozen strings table
         Self::process_weak_table_chunked(
             "frozen strings",
             (upcalls().get_frozen_strings_table)(),
+            true,
+            false,
+            forward,
             worker,
         );
 
         Self::process_weak_table_chunked(
             "global symbols",
             (upcalls().get_global_symbols_table)(),
+            false,
+            true,
+            forward,
             worker,
         );
     }
@@ -93,6 +101,9 @@ impl WeakProcessor {
     pub fn process_weak_table_chunked(
         name: &str,
         table: *mut st_table,
+        weak_keys: bool,
+        weak_values: bool,
+        forward: bool,
         worker: &mut GCWorker<Ruby>,
     ) {
         let mut entries_start = 0;
@@ -118,6 +129,9 @@ impl WeakProcessor {
                     table,
                     begin,
                     end,
+                    weak_keys,
+                    weak_values,
+                    forward,
                     after_all,
                 }) as _
             })
@@ -281,6 +295,9 @@ struct UpdateTableEntriesParallel {
     table: *mut st_table,
     begin: usize,
     end: usize,
+    weak_keys: bool,
+    weak_values: bool,
+    forward: bool,
     after_all: Arc<AfterAll>,
 }
 
@@ -291,7 +308,14 @@ impl UpdateTableEntriesParallel {}
 impl GCWork<Ruby> for UpdateTableEntriesParallel {
     fn do_work(&mut self, worker: &mut GCWorker<Ruby>, _mmtk: &'static mmtk::MMTK<Ruby>) {
         debug!("Updating entries of {} table", self.name);
-        (upcalls().st_update_entries_range)(self.table, self.begin, self.end);
+        (upcalls().st_update_entries_range)(
+            self.table,
+            self.begin,
+            self.end,
+            self.weak_keys,
+            self.weak_values,
+            self.forward,
+        );
         debug!("Done updating entries of {} table", self.name);
         self.after_all.count_down(worker);
     }

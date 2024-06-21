@@ -389,8 +389,14 @@ pub struct RubyUpcalls {
         entries_bound: *mut libc::size_t,
         bins_num: *mut libc::size_t,
     ),
-    pub st_update_entries_range:
-        extern "C" fn(table: *mut st_table, begin: libc::size_t, end: libc::size_t),
+    pub st_update_entries_range: extern "C" fn(
+        table: *mut st_table,
+        begin: libc::size_t,
+        end: libc::size_t,
+        weak_keys: bool,
+        weak_records: bool,
+        forward: bool,
+    ),
     pub st_update_bins_range:
         extern "C" fn(table: *mut st_table, begin: libc::size_t, end: libc::size_t),
 }

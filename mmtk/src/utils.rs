@@ -55,6 +55,8 @@ pub struct AfterAll {
     packets: AtomicRefCell<Vec<Box<dyn GCWork<Ruby>>>>,
 }
 
+unsafe impl Sync for AfterAll {}
+
 impl AfterAll {
     pub fn new(stage: WorkBucketStage) -> Self {
         Self {
