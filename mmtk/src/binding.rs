@@ -19,6 +19,12 @@ pub struct RubyBindingFast {
     pub gc_enabled: AtomicBool,
 }
 
+impl Default for RubyBindingFast {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RubyBindingFast {
     pub const fn new() -> Self {
         Self {
@@ -31,6 +37,12 @@ impl RubyBindingFast {
 
 pub struct RubyBindingFastMut {
     pub suffix_size: usize,
+}
+
+impl Default for RubyBindingFastMut {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RubyBindingFastMut {
