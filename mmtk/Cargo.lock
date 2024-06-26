@@ -128,9 +128,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.100"
+version = "1.0.101"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c891175c3fb232128f48de6590095e59198bbeb8620c310be349bfc3afd12c7b"
+checksum = "ac367972e516d45567c7eafc73d24e1c193dcf200a8d94e9db7b3d38b349572d"
 dependencies = [
  "jobserver",
  "libc",
@@ -230,9 +230,9 @@ checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 
 [[package]]
 name = "either"
-version = "1.12.0"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dca9240753cf90908d7e4aac30f630662b02aebaa1b58a3cadabdb23385b58b"
+checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 
 [[package]]
 name = "enum-map"
@@ -432,7 +432,7 @@ dependencies = [
 [[package]]
 name = "mmtk"
 version = "0.25.0"
-source = "git+https://github.com/mmtk/mmtk-core.git?rev=3be73b8048df17f1f2bd019d0b109488a2c5e313#3be73b8048df17f1f2bd019d0b109488a2c5e313"
+source = "git+https://github.com/mmtk/mmtk-core.git?rev=f1c0592e889588a3ce1e5aeff3b4a57c9d38e6b5#f1c0592e889588a3ce1e5aeff3b4a57c9d38e6b5"
 dependencies = [
  "atomic",
  "atomic-traits",
@@ -467,7 +467,7 @@ dependencies = [
 [[package]]
 name = "mmtk-macros"
 version = "0.25.0"
-source = "git+https://github.com/mmtk/mmtk-core.git?rev=3be73b8048df17f1f2bd019d0b109488a2c5e313#3be73b8048df17f1f2bd019d0b109488a2c5e313"
+source = "git+https://github.com/mmtk/mmtk-core.git?rev=f1c0592e889588a3ce1e5aeff3b4a57c9d38e6b5#f1c0592e889588a3ce1e5aeff3b4a57c9d38e6b5"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -737,9 +737,9 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "1.6.0"
+version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87cc5ceb3875bb20c2890005a4e226a4651264a5c75edb2421b52861a0a0cb50"
+checksum = "c55115c6fbe2d2bef26eb09ad74bde02d8255476fc0c7b515ef09fbb35742d82"
 dependencies = [
  "tinyvec_macros",
 ]
