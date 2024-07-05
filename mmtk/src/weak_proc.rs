@@ -76,7 +76,7 @@ impl WeakProcessor {
             Box::new(UpdateWbUnprotectedObjectsList) as _,
         ]);
 
-        let forward = crate::mmtk().get_plan().current_gc_may_move_object();
+        let forward = crate::binding().current_gc_may_move_object();
 
         // Experimenting with frozen strings table
         Self::process_weak_table_chunked(

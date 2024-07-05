@@ -2,14 +2,14 @@ use std::sync::Mutex;
 
 use mmtk::{
     memory_manager,
-    scheduler::{GCWork, WorkBucketStage},
-    util::{ObjectReference, VMWorkerThread},
+    scheduler::{GCWork, GCWorker, WorkBucketStage},
+    util::ObjectReference,
 };
 
-use crate::{abi::GCThreadTLS, upcalls, Ruby};
+use crate::{abi::GCThreadTLS, upcalls, utils::GenList, Ruby};
 
 pub struct PPPRegistry {
-    ppps: Mutex<Vec<ObjectReference>>,
+    ppps: Mutex<GenList<ObjectReference>>,
     pinned_ppp_children: Mutex<Vec<ObjectReference>>,
 }
 
@@ -28,21 +28,16 @@ impl PPPRegistry {
 
     pub fn register_many(&self, objects: &[ObjectReference]) {
         let mut ppps = self.ppps.lock().unwrap();
-        for object in objects.iter().copied() {
-            ppps.push(object);
-        }
+        ppps.extend(objects.iter().copied());
     }
 
-    pub fn pin_ppp_children(&self, tls: VMWorkerThread) {
+    pub fn pin_ppp_children(&self, worker: &mut GCWorker<Ruby>) {
         log::debug!("Pin children of PPPs...");
 
-        if !crate::mmtk().get_plan().current_gc_may_move_object() {
+        if !crate::binding().current_gc_may_move_object() {
             log::debug!("The current GC is non-moving.  Skipped pinning PPP children.");
             return;
         }
-
-        let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
-        let worker = gc_tls.worker();
 
         {
             let ppps = self
@@ -50,57 +45,33 @@ impl PPPRegistry {
                 .try_lock()
                 .expect("PPPRegistry should not have races during GC.");
 
+            probe!(mmtk_ruby, pin_ppps_prepare, ppps.young().len(), ppps.old().len());
+
             // I tried several packet sizes and 512 works pretty well.  It should be adjustable.
             let packet_size = 512;
-            let work_packets = ppps
-                .chunks(packet_size)
-                .map(|chunk| {
+            let mut work_packets = Vec::new();
+            let mut visit_gen = |s: &[ObjectReference]| {
+                work_packets.extend(s.chunks(packet_size).map(|chunk| {
                     Box::new(PinPPPChildren {
                         ppps: chunk.to_vec(),
                     }) as _
-                })
-                .collect();
+                }))
+            };
+            visit_gen(ppps.young());
+            if !crate::binding().is_current_gc_nursery() {
+                visit_gen(ppps.old());
+            }
 
             worker.scheduler().work_buckets[WorkBucketStage::Prepare].bulk_add(work_packets);
         }
     }
 
-    pub fn cleanup_ppps(&self) {
-        log::debug!("Removing dead PPPs...");
-        {
-            let mut ppps = self
-                .ppps
-                .try_lock()
-                .expect("PPPRegistry::ppps should not have races during GC.");
-
-            probe!(mmtk_ruby, remove_dead_ppps_start, ppps.len());
-            ppps.retain_mut(|obj| {
-                if obj.is_live::<Ruby>() {
-                    *obj = obj.get_forwarded_object::<Ruby>().unwrap_or(*obj);
-                    true
-                } else {
-                    log::trace!("  PPP removed: {}", *obj);
-                    false
-                }
-            });
-            probe!(mmtk_ruby, remove_dead_ppps_end);
-        }
-
-        log::debug!("Unpinning pinned PPP children...");
-
-        if !crate::mmtk().get_plan().current_gc_may_move_object() {
+    pub fn cleanup_ppps(&self, worker: &mut GCWorker<Ruby>) {
+        worker.add_work(WorkBucketStage::VMRefClosure, RemoveDeadPPPs);
+        if !crate::binding().current_gc_may_move_object() {
             log::debug!("The current GC is non-moving.  Skipped unpinning PPP children.");
         } else {
-            let mut pinned_ppps = self
-                .pinned_ppp_children
-                .try_lock()
-                .expect("PPPRegistry::pinned_ppp_children should not have races during GC.");
-            probe!(mmtk_ruby, unpin_ppp_children_start, pinned_ppps.len());
-            for obj in pinned_ppps.drain(..) {
-                let unpinned = memory_manager::unpin_object::<Ruby>(obj);
-                debug_assert!(unpinned);
-            }
-            probe!(mmtk_ruby, unpin_ppp_children_end);
+            worker.add_work(WorkBucketStage::VMRefClosure, UnpinPPPChildren);
         }
     }
 }
@@ -159,6 +130,76 @@ impl GCWork<Ruby> for PinPPPChildren {
                 .lock()
                 .unwrap();
             pinned_ppp_children.append(&mut newly_pinned_ppp_children);
+        }
+    }
+}
+
+struct RemoveDeadPPPs;
+
+impl GCWork<Ruby> for RemoveDeadPPPs {
+    fn do_work(&mut self, _worker: &mut GCWorker<Ruby>, _mmtk: &'static mmtk::MMTK<Ruby>) {
+        log::debug!("Removing dead PPPs...");
+
+        let mut ppps = crate::binding()
+            .ppp_registry
+            .ppps
+            .try_lock()
+            .expect("PPPRegistry::ppps should not have races during GC.");
+
+        let young_ppps = ppps.young().len();
+        let old_ppps = ppps.old().len();
+
+        let mut dead_ppps = 0;
+        let mut no_longer_ppps = 0;
+
+        let mut visit_ppp = |obj: &mut ObjectReference| {
+            if obj.is_live::<Ruby>() {
+                if (upcalls().is_ppp)(*obj) {
+                    *obj = obj.get_forwarded_object::<Ruby>().unwrap_or(*obj);
+                    true
+                } else {
+                    no_longer_ppps += 1;
+                    log::trace!("  No longer PPP.  Removed: {}", *obj);
+                    false
+                }
+            } else {
+                dead_ppps += 1;
+                log::trace!("  Dead PPP removed: {}", *obj);
+                false
+            }
+        };
+
+        log::debug!("Removing dead young PPPs...");
+        ppps.retain_mut_young(&mut visit_ppp);
+
+        if !crate::binding().is_current_gc_nursery() {
+            log::debug!("Removing dead old PPPs...");
+            ppps.retain_mut_old(&mut visit_ppp);
+        }
+
+        probe!(mmtk_ruby, remove_dead_ppps, young_ppps, old_ppps, dead_ppps, no_longer_ppps);
+
+        ppps.promote();
+    }
+}
+
+struct UnpinPPPChildren;
+
+impl GCWork<Ruby> for UnpinPPPChildren {
+    fn do_work(&mut self, _worker: &mut GCWorker<Ruby>, _mmtk: &'static mmtk::MMTK<Ruby>) {
+        log::debug!("Unpinning pinned PPP children...");
+
+        let mut pinned_ppps = crate::binding()
+            .ppp_registry
+            .pinned_ppp_children
+            .try_lock()
+            .expect("PPPRegistry::pinned_ppp_children should not have races during GC.");
+
+        probe!(mmtk_ruby, unpin_ppp_children, pinned_ppps.len());
+
+        for obj in pinned_ppps.drain(..) {
+            let unpinned = memory_manager::unpin_object::<Ruby>(obj);
+            debug_assert!(unpinned);
         }
     }
 }
