@@ -50,16 +50,16 @@ impl PPPRegistry {
             // I tried several packet sizes and 512 works pretty well.  It should be adjustable.
             let packet_size = 512;
             let mut work_packets = Vec::new();
-            let mut visit_gen = |s: &[ObjectReference]| {
+            let mut visit_refs = |s: &[ObjectReference]| {
                 work_packets.extend(s.chunks(packet_size).map(|chunk| {
                     Box::new(PinPPPChildren {
                         ppps: chunk.to_vec(),
                     }) as _
                 }))
             };
-            visit_gen(ppps.young());
+            visit_refs(ppps.young());
             if !crate::binding().is_current_gc_nursery() {
-                visit_gen(ppps.old());
+                visit_refs(ppps.old());
             }
 
             worker.scheduler().work_buckets[WorkBucketStage::Prepare].bulk_add(work_packets);
