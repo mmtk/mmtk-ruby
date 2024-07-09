@@ -76,12 +76,12 @@ impl PPPRegistry {
             probe!(mmtk_ruby, remove_dead_ppps_start, ppps.len());
             ppps.retain_mut(|obj| {
                 if obj.is_live::<Ruby>() {
-                    if (upcalls().is_ppp)(*obj) {
-                        *obj = obj.get_forwarded_object::<Ruby>().unwrap_or(*obj);
-                        true
-                    } else {
+                    if (upcalls().is_no_longer_ppp)(*obj) {
                         log::trace!("  No longer PPP.  Removed: {}", *obj);
                         false
+                    } else {
+                        *obj = obj.get_forwarded_object::<Ruby>().unwrap_or(*obj);
+                        true
                     }
                 } else {
                     log::trace!("  Dead PPP removed: {}", *obj);
@@ -147,10 +147,10 @@ impl GCWork<Ruby> for PinPPPChildren {
             .set_temporarily_and_run_code(visit_object, || {
                 for obj in self.ppps.iter().cloned() {
                     log::trace!("  PPP: {}", obj);
-                    if (upcalls().is_ppp)(obj) {
-                        (upcalls().call_gc_mark_children)(obj);
-                    } else {
+                    if (upcalls().is_no_longer_ppp)(obj) {
                         log::trace!("    No longer PPP.  Skip {}", obj);
+                    } else {
+                        (upcalls().call_gc_mark_children)(obj);
                     }
                 }
             });
