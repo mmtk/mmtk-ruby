@@ -35,6 +35,8 @@ jobs:
       matrix:
         debug-level: ["debug", "release"]
         plan: ["MarkSweep", "Immix", "StickyImmix"]
+        include:
+          - debug-level: vanilla
     env:
       DEBUG_LEVEL: ${{ matrix.debug-level }}
       CHOSEN_PLAN: ${{ matrix.plan }}
