@@ -20,8 +20,11 @@ impl Collection<Ruby> for VMCollection {
     where
         F: FnMut(&'static mut mmtk::Mutator<Ruby>),
     {
+        let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
+        let worker = gc_tls.worker();
+
         (upcalls().stop_the_world)(tls);
-        crate::binding().ppp_registry.pin_ppp_children(tls);
+        crate::binding().ppp_registry.pin_ppp_children(worker);
         (upcalls().get_mutators)(
             Self::notify_mutator_ready::<F>,
             &mut mutator_visitor as *mut F as *mut _,
