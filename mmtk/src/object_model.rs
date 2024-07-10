@@ -112,10 +112,6 @@ impl ObjectModel<Ruby> for VMObjectModel {
         todo!()
     }
 
-    fn ref_to_address(object: ObjectReference) -> Address {
-        object.to_raw_address()
-    }
-
     fn ref_to_object_start(object: ObjectReference) -> Address {
         RubyObjectAccess::from_objref(object).obj_start()
     }
@@ -124,10 +120,7 @@ impl ObjectModel<Ruby> for VMObjectModel {
         RubyObjectAccess::from_objref(object).payload_addr()
     }
 
-    fn address_to_ref(addr: Address) -> ObjectReference {
-        debug_assert!(!addr.is_zero());
-        unsafe { ObjectReference::from_raw_address_unchecked(addr) }
-    }
+    const IN_OBJECT_ADDRESS_OFFSET: isize = 0;
 
     fn get_size_when_copied(object: ObjectReference) -> usize {
         Self::get_current_size(object)
