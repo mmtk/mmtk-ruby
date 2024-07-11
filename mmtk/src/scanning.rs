@@ -28,7 +28,7 @@ impl Scanning<Ruby> for VMScanning {
         object_tracer: &mut OT,
     ) {
         debug_assert!(
-            mmtk::memory_manager::is_mmtk_object(object.to_raw_address()),
+            mmtk::memory_manager::is_mmtk_object(object.to_raw_address()).is_some(),
             "Not an MMTk object: {object}",
         );
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
@@ -40,7 +40,7 @@ impl Scanning<Ruby> for VMScanning {
                 if pin { " pin" } else { "" }
             );
             debug_assert!(
-                mmtk::memory_manager::is_mmtk_object(target_object.to_raw_address()),
+                mmtk::memory_manager::is_mmtk_object(target_object.to_raw_address()).is_some(),
                 "Destination is not an MMTk object. Src: {object} dst: {target_object}"
             );
             let forwarded_target = object_tracer.trace_object(target_object);
@@ -173,7 +173,7 @@ impl VMScanning {
                 }
             );
             debug_assert!(
-                mmtk::memory_manager::is_mmtk_object(object.to_raw_address()),
+                mmtk::memory_manager::is_mmtk_object(object.to_raw_address()).is_some(),
                 "Root does not point to MMTk object.  object: {object}"
             );
             buffer.push(object);
