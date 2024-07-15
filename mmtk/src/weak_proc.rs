@@ -3,13 +3,12 @@ use std::sync::{Arc, Mutex};
 use mmtk::{
     scheduler::{GCWork, GCWorker, WorkBucketStage},
     util::ObjectReference,
-    vm::{ObjectModel, ObjectTracerContext},
+    vm::ObjectTracerContext,
 };
 
 use crate::{
     abi::{st_table, GCThreadTLS, RubyObjectAccess},
     binding::MovedGIVTblEntry,
-    object_model::VMObjectModel,
     upcalls,
     utils::AfterAll,
     Ruby,
@@ -231,7 +230,7 @@ trait GlobalTableProcessingWork {
         // of `trace_object` due to the way it is used in `UPDATE_IF_MOVED`.
         let forward_object = |_worker, object: ObjectReference, _pin| {
             debug_assert!(
-                mmtk::memory_manager::is_mmtk_object(VMObjectModel::ref_to_address(object)),
+                mmtk::memory_manager::is_mmtk_object(object.to_raw_address()),
                 "{} is not an MMTk object",
                 object
             );

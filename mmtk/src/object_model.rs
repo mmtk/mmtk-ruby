@@ -37,6 +37,8 @@ impl ObjectModel<Ruby> for VMObjectModel {
 
     const NEED_VO_BITS_DURING_TRACING: bool = true;
 
+    const IN_OBJECT_ADDRESS_OFFSET: isize = 0;
+
     fn copy(
         from: ObjectReference,
         semantics: CopySemantics,
@@ -112,21 +114,12 @@ impl ObjectModel<Ruby> for VMObjectModel {
         todo!()
     }
 
-    fn ref_to_address(object: ObjectReference) -> Address {
-        object.to_raw_address()
-    }
-
     fn ref_to_object_start(object: ObjectReference) -> Address {
         RubyObjectAccess::from_objref(object).obj_start()
     }
 
     fn ref_to_header(object: ObjectReference) -> Address {
         RubyObjectAccess::from_objref(object).payload_addr()
-    }
-
-    fn address_to_ref(addr: Address) -> ObjectReference {
-        debug_assert!(!addr.is_zero());
-        unsafe { ObjectReference::from_raw_address_unchecked(addr) }
     }
 
     fn get_size_when_copied(object: ObjectReference) -> usize {
