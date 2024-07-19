@@ -230,7 +230,7 @@ trait GlobalTableProcessingWork {
         // of `trace_object` due to the way it is used in `UPDATE_IF_MOVED`.
         let forward_object = |_worker, object: ObjectReference, _pin| {
             debug_assert!(
-                mmtk::memory_manager::is_mmtk_object(object.to_address::<Ruby>()),
+                mmtk::memory_manager::is_mmtk_object(object.to_address::<Ruby>()).is_some(),
                 "{} is not an MMTk object",
                 object
             );
