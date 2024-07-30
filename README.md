@@ -24,6 +24,10 @@ git clone https://github.com/mmtk/ruby.git
 git clone https://github.com/mmtk/mmtk-ruby.git
 ```
 
+The `mmtk-ruby` repository should be on the `dev/mmtk-overrides-default` branch.
+The default branch changed recently.  If you cloned the repository before, make
+sure you checked out the right branch.
+
 ### Build the MMTk binding, first.
 
 ```bash
@@ -172,12 +176,15 @@ Currently, supported plans include:
     evacuation.  It moves objects from time to time to prevent the heap from
     being too fragmented.
 
+-   `StickyImmix`: A generational variant of [Immix].  It currently performs
+    non-moving nursery GC, and may defragment during full-heap GC.
+
 [Immix]: https://users.cecs.anu.edu.au/~steveb/pubs/papers/immix-pldi-2008.pdf
 
 Example:
 
 ```bash
-./miniruby --mmtk --mmtk-plan=Immix -e "puts 'Hello world!'"
+./miniruby --mmtk --mmtk-plan=StickyImmix -e "puts 'Hello world!'"
 ```
 
 ### Adjusting heap size
@@ -206,7 +213,7 @@ the `RUBYOPT` environment variable, too.
 Example:
 
 ```bash
-RUBYOPT='--mmtk-plan=Immix' ./miniruby --version
+RUBYOPT='--mmtk-plan=StickyImmix' ./miniruby --version
 ```
 
 ### MMTk-specific methods in the `GC::MMTk` module.
@@ -239,6 +246,7 @@ When running `make btest`, use `RUN_OPTS` to pass additional parameters to the
 ```bash
 make btest RUN_OPTS="--mmtk-plan=MarkSweep"
 make btest RUN_OPTS="--mmtk-plan=Immix"
+make btest RUN_OPTS="--mmtk-plan=StickyImmix"
 ```
 
 ### All tests
@@ -251,19 +259,19 @@ To run the tests
 
 ```bash
 TEST_CASES=$(grep -v '#' ../../mmtk-ruby/ruby-test-cases.txt | awk '{print("../"$1)}' | xargs)
-make test-all TESTS="$TEST_CASES" RUN_OPTS="--mmtk-plan=Immix"
+make test-all TESTS="$TEST_CASES" RUN_OPTS="--mmtk-plan=StickyImmix"
 ```
 
 Or in one line:
 
 ```bash
-make test-all TESTS="$(grep -v '#' ../../mmtk-ruby/ruby-test-cases.txt | awk '{print("../"$1)}' | xargs)" RUN_OPTS="--mmtk-plan=Immix"
+make test-all TESTS="$(grep -v '#' ../../mmtk-ruby/ruby-test-cases.txt | awk '{print("../"$1)}' | xargs)" RUN_OPTS="--mmtk-plan=StickyImmix"
 ```
 
 ## Current status
 
 Known working:
- - Supports MarkSweep and Immix GC algorithms
+ - Supports MarkSweep, Immix and StickyImmix GC algorithms
  - All test cases in `make btest`
  - Most test cases in `make test-all`
  - Liquid benchmark (https://github.com/Shopify/liquid/blob/master/performance/benchmark.rb)
@@ -275,7 +283,6 @@ Known issues:
 
 ## TODO
  - Performance tuning
- - Support StickyImmix GC algorithm
 
 ## Licensing
 
