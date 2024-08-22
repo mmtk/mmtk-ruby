@@ -12,7 +12,7 @@ edition = "2021"
 # Metadata for the Ruby repository
 [package.metadata.ci-repos.ruby]
 repo = "mmtk/ruby" # This is used by actions/checkout, so the format is "owner/repo", not URL.
-rev = "a55df63fcc186880f2262ab7e54b442f2637ff2b"
+rev = "8c5bd19b7a73c5156c4e2b9ee25cbf89c66816b8"
 
 [lib]
 name = "mmtk_ruby"
