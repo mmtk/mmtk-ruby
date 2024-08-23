@@ -53,7 +53,7 @@ test/ruby/test_integer.rb
 test/ruby/test_io_buffer.rb
 test/ruby/test_io_m17n.rb
 # test/ruby/test_io.rb                  XXXXX leaks?
-# test/ruby/test_iseq.rb                XXXXX failures
+test/ruby/test_iseq.rb
 test/ruby/test_iterator.rb
 test/ruby/test_key_error.rb
 test/ruby/test_keyword.rb
@@ -75,8 +75,8 @@ test/ruby/test_nomethod_error.rb
 test/ruby/test_not.rb
 test/ruby/test_numeric.rb
 test/ruby/test_object.rb
-# test/ruby/test_objectspace.rb             XXXX failures
-# test/ruby/test_optimization.rb            XXXXX hard crash
+test/ruby/test_objectspace.rb
+test/ruby/test_optimization.rb
 test/ruby/test_pack.rb
 test/ruby/test_parse.rb
 test/ruby/test_path.rb
@@ -98,7 +98,7 @@ test/ruby/test_require.rb
 # test/ruby/test_rubyoptions.rb         XXXX failures and crashes
 # test/ruby/test_rubyvm_mjit.rb         XXXXX query
 test/ruby/test_rubyvm.rb
-# test/ruby/test_settracefunc.rb        XXXX failures
+test/ruby/test_settracefunc.rb
 test/ruby/test_signal.rb
 test/ruby/test_sleep.rb
 test/ruby/test_sprintf_comb.rb

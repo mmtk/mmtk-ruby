@@ -374,3 +374,15 @@ pub extern "C" fn mmtk_object_reference_write_post(
         ignored_target,
     )
 }
+
+/// Enumerate objects.  This function will call `callback(object, data)` for each object. It has
+/// undefined behavior if allocation or GC happens while this function is running.
+#[no_mangle]
+pub extern "C" fn mmtk_enumerate_objects(
+    callback: extern "C" fn(ObjectReference, *mut libc::c_void),
+    data: *mut libc::c_void,
+) {
+    crate::mmtk().enumerate_objects(|object| {
+        callback(object, data);
+    })
+}
