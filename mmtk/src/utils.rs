@@ -86,3 +86,51 @@ impl AfterAll {
         }
     }
 }
+
+pub struct GenList<T> {
+    old: Vec<T>,
+    young: Vec<T>,
+}
+
+impl<T> GenList<T> {
+    pub const fn new() -> Self {
+        Self {
+            old: Vec::new(),
+            young: Vec::new(),
+        }
+    }
+
+    pub fn push(&mut self, v: T) {
+        self.young.push(v)
+    }
+
+    pub fn extend(&mut self, iter: impl IntoIterator<Item = T>) {
+        self.young.extend(iter)
+    }
+
+    pub fn young(&self) -> &[T] {
+        &self.young
+    }
+
+    pub fn old(&self) -> &[T] {
+        &self.old
+    }
+
+    pub fn retain_mut_young<F>(&mut self, f: F) where F: FnMut(&mut T) -> bool {
+        self.young.retain_mut(f);
+    }
+
+    pub fn retain_mut_old<F>(&mut self, mut f: F) where F: FnMut(&mut T) -> bool {
+        self.old.retain_mut(&mut f);
+    }
+
+    pub fn promote(&mut self) {
+        self.old.append(&mut self.young);
+    }
+}
+
+impl<T> Default for GenList<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}

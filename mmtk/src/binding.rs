@@ -118,6 +118,17 @@ impl RubyBinding {
         unsafe { &*self.upcalls as &'static abi::RubyUpcalls }
     }
 
+    pub fn is_current_gc_nursery(&self) -> bool {
+        self.mmtk
+            .get_plan()
+            .generational()
+            .is_some_and(|gen| gen.is_current_gc_nursery())
+    }
+
+    pub fn current_gc_may_move_object(&self) -> bool {
+        self.mmtk.get_plan().current_gc_may_move_object()
+    }
+
     pub fn get_plan_name_c(&self) -> *const libc::c_char {
         let mut plan_name = self.plan_name.lock().unwrap();
         if plan_name.is_none() {
