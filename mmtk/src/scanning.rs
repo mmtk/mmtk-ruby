@@ -280,7 +280,7 @@ impl<F: RootsWorkFactory<RubySlot>> GCWork<Ruby> for ScanWbUnprotectedRoots<F> {
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(worker.tls) };
         VMScanning::collect_object_roots_in("wb_unprot_roots", gc_tls, &mut self.factory, || {
             for object in self.objects.iter().copied() {
-                if object.is_reachable::<Ruby>() {
+                if object.is_reachable() {
                     debug!(
                         "[wb_unprot_roots] Visiting WB-unprotected object (parent): {}",
                         object

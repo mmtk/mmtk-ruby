@@ -202,7 +202,7 @@ impl GCWork<Ruby> for ProcessObjFreeCandidates {
         let mut new_candidates = Vec::new();
 
         for object in obj_free_candidates.iter().copied() {
-            if object.is_reachable::<Ruby>() {
+            if object.is_reachable() {
                 // Forward and add back to the candidate list.
                 let new_object = object.forward();
                 trace!(
@@ -230,7 +230,7 @@ trait GlobalTableProcessingWork {
         // of `trace_object` due to the way it is used in `UPDATE_IF_MOVED`.
         let forward_object = |_worker, object: ObjectReference, _pin| {
             debug_assert!(
-                mmtk::memory_manager::is_mmtk_object(object.to_address::<Ruby>()).is_some(),
+                mmtk::memory_manager::is_mmtk_object(object.to_raw_address()).is_some(),
                 "{} is not an MMTk object",
                 object
             );
@@ -352,7 +352,7 @@ impl GCWork<Ruby> for UpdateWbUnprotectedObjectsList {
         debug!("Updating {} WB-unprotected objects", old_objects.len());
 
         for object in old_objects {
-            if object.is_reachable::<Ruby>() {
+            if object.is_reachable() {
                 // Forward and add back to the candidate list.
                 let new_object = object.forward();
                 trace!(
@@ -377,6 +377,6 @@ trait Forwardable {
 
 impl Forwardable for ObjectReference {
     fn forward(&self) -> Self {
-        self.get_forwarded_object::<Ruby>().unwrap_or(*self)
+        self.get_forwarded_object().unwrap_or(*self)
     }
 }

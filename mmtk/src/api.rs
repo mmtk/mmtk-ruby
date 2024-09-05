@@ -173,7 +173,7 @@ pub extern "C" fn mmtk_post_alloc(
 
 #[no_mangle]
 pub extern "C" fn mmtk_will_never_move(object: ObjectReference) -> bool {
-    !object.is_movable::<Ruby>()
+    !object.is_movable()
 }
 
 #[no_mangle]
@@ -224,17 +224,17 @@ pub extern "C" fn mmtk_total_bytes() -> usize {
 
 #[no_mangle]
 pub extern "C" fn mmtk_is_reachable(object: ObjectReference) -> bool {
-    object.is_reachable::<Ruby>()
+    object.is_reachable()
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_is_live_object(object: ObjectReference) -> bool {
-    memory_manager::is_live_object::<Ruby>(object)
+    memory_manager::is_live_object(object)
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_get_forwarded_object(object: ObjectReference) -> NullableObjectReference {
-    object.get_forwarded_object::<Ruby>().into()
+    object.get_forwarded_object().into()
 }
 
 #[no_mangle]
@@ -337,17 +337,17 @@ pub extern "C" fn mmtk_get_immix_bump_ptr_offset() -> usize {
 
 #[no_mangle]
 pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
-    mmtk::memory_manager::pin_object::<Ruby>(object)
+    mmtk::memory_manager::pin_object(object)
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
-    mmtk::memory_manager::unpin_object::<Ruby>(object)
+    mmtk::memory_manager::unpin_object(object)
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_is_pinned(object: ObjectReference) -> bool {
-    mmtk::memory_manager::is_pinned::<Ruby>(object)
+    mmtk::memory_manager::is_pinned(object)
 }
 
 #[no_mangle]

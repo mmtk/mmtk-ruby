@@ -120,8 +120,6 @@ impl ObjectModel<Ruby> for VMObjectModel {
         RubyObjectAccess::from_objref(object).payload_addr()
     }
 
-    const IN_OBJECT_ADDRESS_OFFSET: isize = 0;
-
     fn get_size_when_copied(object: ObjectReference) -> usize {
         Self::get_current_size(object)
     }

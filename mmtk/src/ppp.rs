@@ -75,8 +75,8 @@ impl PPPRegistry {
 
             probe!(mmtk_ruby, remove_dead_ppps_start, ppps.len());
             ppps.retain_mut(|obj| {
-                if obj.is_live::<Ruby>() {
-                    *obj = obj.get_forwarded_object::<Ruby>().unwrap_or(*obj);
+                if obj.is_live() {
+                    *obj = obj.get_forwarded_object().unwrap_or(*obj);
                     true
                 } else {
                     log::trace!("  PPP removed: {}", *obj);
@@ -97,7 +97,7 @@ impl PPPRegistry {
                 .expect("PPPRegistry::pinned_ppp_children should not have races during GC.");
             probe!(mmtk_ruby, unpin_ppp_children_start, pinned_ppps.len());
             for obj in pinned_ppps.drain(..) {
-                let unpinned = memory_manager::unpin_object::<Ruby>(obj);
+                let unpinned = memory_manager::unpin_object(obj);
                 debug_assert!(unpinned);
             }
             probe!(mmtk_ruby, unpin_ppp_children_end);
@@ -147,7 +147,7 @@ impl GCWork<Ruby> for PinPPPChildren {
             });
 
         for target_object in ppp_children {
-            if memory_manager::pin_object::<Ruby>(target_object) {
+            if memory_manager::pin_object(target_object) {
                 newly_pinned_ppp_children.push(target_object);
             }
         }
