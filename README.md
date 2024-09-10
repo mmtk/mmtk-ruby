@@ -251,28 +251,33 @@ make btest RUN_OPTS="--mmtk-plan=StickyImmix"
 
 ### All tests
 
-Note that currently it is not our priority to support Ractor.  Some tests
-involving Ractors are not enabled.  You can get a list of enabled tests in the
-file `ruby-test-cases.txt`.
+We excluded some tests when testing against MMTk.  Those test cases are listed
+in `test/.excludes-mmtk` in the [`mmtk/ruby`](https://github.com/mmtk/ruby.git)
+repository.
 
-To run the tests
+-   Test cases that involve Ractors are excluded because it is currently not a
+    priority to support Ractors.
+-   Test cases that involve YJIT are excluded because we have not started
+    working on YJIT support, yet.
+-   Some tests involve implementation details of CRuby's default GC, such as
+    compaction and memsize.  Those test cases are excluded, too.
+-   Other excluded tests involve things that are not yet implemented properly in
+    the MMTk binding.
+
+To run the tests, run the following command.
 
 ```bash
-TEST_CASES=$(grep -v '#' ../../mmtk-ruby/ruby-test-cases.txt | awk '{print("../"$1)}' | xargs)
-make test-all TESTS="$TEST_CASES" RUN_OPTS="--mmtk-plan=StickyImmix"
+make test-all RUN_OPTS="--mmtk-plan=StickyImmix" TESTOPTS="-v --excludes-dir=../test/.excludes-mmtk"
 ```
 
-Or in one line:
-
-```bash
-make test-all TESTS="$(grep -v '#' ../../mmtk-ruby/ruby-test-cases.txt | awk '{print("../"$1)}' | xargs)" RUN_OPTS="--mmtk-plan=StickyImmix"
-```
+That assumes you are in the `build-debug` or `build-release` directory.  Adjust
+the path `../test/.excludes-mmtk` if you run it in a different directory.
 
 ## Current status
 
 Known working:
  - Supports MarkSweep, Immix and StickyImmix GC algorithms
- - All test cases in `make btest`
+ - Most test cases in `make btest`
  - Most test cases in `make test-all`
  - Liquid benchmark (https://github.com/Shopify/liquid/blob/master/performance/benchmark.rb)
 
