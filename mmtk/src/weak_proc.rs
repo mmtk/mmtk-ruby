@@ -67,8 +67,7 @@ impl WeakProcessor {
         worker.scheduler().work_buckets[WorkBucketStage::VMRefClosure].bulk_add(vec![
             Box::new(UpdateGenericIvTbl) as _,
             // Box::new(UpdateFrozenStringsTable) as _,
-            Box::new(UpdateFinalizerTable) as _,
-            Box::new(UpdateObjIdTables) as _,
+            Box::new(UpdateFinalizerAndObjIdTable) as _,
             // Box::new(UpdateGlobalSymbolsTable) as _,
             Box::new(UpdateOverloadedCmeTable) as _,
             Box::new(UpdateCiTable) as _,
@@ -271,12 +270,11 @@ define_global_table_processor!(UpdateFrozenStringsTable, {
     (crate::upcalls().update_frozen_strings_table)()
 });
 
-define_global_table_processor!(UpdateFinalizerTable, {
-    (crate::upcalls().update_finalizer_table)()
-});
-
-define_global_table_processor!(UpdateObjIdTables, {
-    (crate::upcalls().update_obj_id_tables)()
+define_global_table_processor!(UpdateFinalizerAndObjIdTable, {
+    // `update_finalizer_table` depends on the `obj_to_id_table`,
+    // therefore must be processed first.
+    (crate::upcalls().update_finalizer_table)();
+    (crate::upcalls().update_obj_id_tables)();
 });
 
 define_global_table_processor!(UpdateGlobalSymbolsTable, {
