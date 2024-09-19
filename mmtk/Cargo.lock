@@ -128,9 +128,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.1.18"
+version = "1.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b62ac837cdb5cb22e10a256099b4fc502b1dfe560cb282963a974d7abd80e476"
+checksum = "07b1695e2c7e8fc85310cde85aeaab7e3097f593c91d209d3f9df76c928100f0"
 dependencies = [
  "jobserver",
  "libc",
@@ -438,7 +438,7 @@ dependencies = [
 [[package]]
 name = "mmtk"
 version = "0.27.0"
-source = "git+https://github.com/mmtk/mmtk-core.git?rev=a025c24104d8d456a865aa0122e6e0fb6d77e8f2#a025c24104d8d456a865aa0122e6e0fb6d77e8f2"
+source = "git+https://github.com/mmtk/mmtk-core.git?rev=73be50d1fce1c2f6559ffbc5b7a04623ba62e6c4#73be50d1fce1c2f6559ffbc5b7a04623ba62e6c4"
 dependencies = [
  "atomic",
  "atomic-traits",
@@ -474,7 +474,7 @@ dependencies = [
 [[package]]
 name = "mmtk-macros"
 version = "0.27.0"
-source = "git+https://github.com/mmtk/mmtk-core.git?rev=a025c24104d8d456a865aa0122e6e0fb6d77e8f2#a025c24104d8d456a865aa0122e6e0fb6d77e8f2"
+source = "git+https://github.com/mmtk/mmtk-core.git?rev=73be50d1fce1c2f6559ffbc5b7a04623ba62e6c4#73be50d1fce1c2f6559ffbc5b7a04623ba62e6c4"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -771,15 +771,15 @@ checksum = "08f95100a766bf4f8f28f90d77e0a5461bbdb219042e7679bebe79004fed8d75"
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.12"
+version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
+checksum = "e91b56cd4cadaeb79bbf1a5645f6b4f8dc5bde8834ad5894a8db35fda9efa1fe"
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.23"
+version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a56d1686db2308d901306f92a263857ef59ea39678a5458e7cb17f01415101f5"
+checksum = "5033c97c4262335cded6d6fc3e5c18ab755e1a3dc96376350f3d8e9f009ad956"
 dependencies = [
  "tinyvec",
 ]
