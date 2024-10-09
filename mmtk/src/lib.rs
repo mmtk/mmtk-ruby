@@ -12,6 +12,7 @@ use std::thread::ThreadId;
 
 use abi::RubyUpcalls;
 use binding::{RubyBinding, RubyBindingFast, RubyBindingFastMut};
+use mmtk::util::Address;
 use mmtk::vm::slot::{SimpleSlot, UnimplementedMemorySlice};
 use mmtk::vm::VMBinding;
 use mmtk::MMTK;
@@ -132,4 +133,21 @@ pub(crate) fn set_panic_hook() {
             old_hook(panic_info);
         }
     }));
+}
+
+/// This kind of assertion is enabled if either building in debug mode or the
+/// "extra_assert" feature is enabled.
+#[macro_export]
+macro_rules! extra_assert {
+    ($($arg:tt)*) => {
+        if std::cfg!(any(debug_assertions, feature = "extra_assert")) {
+            std::assert!($($arg)*);
+        }
+    };
+}
+
+pub(crate) fn is_mmtk_object_safe(addr: Address) -> bool {
+    !addr.is_zero()
+        && addr.is_aligned_to(mmtk::util::is_mmtk_object::VO_BIT_REGION_SIZE)
+        && mmtk::memory_manager::is_mmtk_object(addr).is_some()
 }

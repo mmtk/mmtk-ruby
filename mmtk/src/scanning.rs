@@ -1,7 +1,7 @@
 use crate::abi::GCThreadTLS;
 
 use crate::utils::ChunkedVecCollector;
-use crate::{upcalls, Ruby, RubySlot};
+use crate::{extra_assert, is_mmtk_object_safe, upcalls, Ruby, RubySlot};
 use mmtk::scheduler::{GCWork, GCWorker, WorkBucketStage};
 use mmtk::util::{ObjectReference, VMWorkerThread};
 use mmtk::vm::{ObjectTracer, RootsWorkFactory, Scanning, SlotVisitor};
@@ -27,8 +27,8 @@ impl Scanning<Ruby> for VMScanning {
         object: ObjectReference,
         object_tracer: &mut OT,
     ) {
-        debug_assert!(
-            mmtk::memory_manager::is_mmtk_object(object.to_raw_address()).is_some(),
+        extra_assert!(
+            is_mmtk_object_safe(object.to_raw_address()),
             "Not an MMTk object: {object}",
         );
         let gc_tls = unsafe { GCThreadTLS::from_vwt_check(tls) };
@@ -39,8 +39,8 @@ impl Scanning<Ruby> for VMScanning {
                 target_object,
                 if pin { " pin" } else { "" }
             );
-            debug_assert!(
-                mmtk::memory_manager::is_mmtk_object(target_object.to_raw_address()).is_some(),
+            extra_assert!(
+                is_mmtk_object_safe(target_object.to_raw_address()),
                 "Destination is not an MMTk object. Src: {object} dst: {target_object}"
             );
             let forwarded_target = object_tracer.trace_object(target_object);
@@ -173,8 +173,8 @@ impl VMScanning {
                     "(movable, but we pin it anyway)"
                 }
             );
-            debug_assert!(
-                mmtk::memory_manager::is_mmtk_object(object.to_raw_address()).is_some(),
+            extra_assert!(
+                is_mmtk_object_safe(object.to_raw_address()),
                 "Root does not point to MMTk object.  object: {object}"
             );
             buffer.push(object);

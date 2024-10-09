@@ -9,7 +9,7 @@ use mmtk::{
 use crate::{
     abi::{st_table, GCThreadTLS, RubyObjectAccess},
     binding::MovedGIVTblEntry,
-    upcalls,
+    extra_assert, is_mmtk_object_safe, upcalls,
     utils::AfterAll,
     Ruby,
 };
@@ -228,8 +228,8 @@ trait GlobalTableProcessingWork {
         // `hash_foreach_replace` depends on `gb_object_moved_p` which has to have the semantics
         // of `trace_object` due to the way it is used in `UPDATE_IF_MOVED`.
         let forward_object = |_worker, object: ObjectReference, _pin| {
-            debug_assert!(
-                mmtk::memory_manager::is_mmtk_object(object.to_raw_address()).is_some(),
+            extra_assert!(
+                is_mmtk_object_safe(object.to_raw_address()),
                 "{} is not an MMTk object",
                 object
             );
