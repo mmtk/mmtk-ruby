@@ -10,7 +10,7 @@ pushd $BINDING_PATH
             cargo build
             ;;
         release)
-            cargo build --release
+            cargo build --features extra_assert --release
             ;;
         vanilla)
             echo "Skipped for vanilla build"
