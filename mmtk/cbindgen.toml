@@ -24,6 +24,9 @@ typedef void* MMTk_NullableObjectReference;
 typedef uint32_t MMTk_AllocationSemantics;
 """
 
+[export]
+include = ["HiddenHeader"]
+
 [export.rename]
 "MMTKBuilder" = "MMTk_Builder"
 "RubyMutator" = "MMTk_Mutator"
@@ -42,3 +45,6 @@ typedef uint32_t MMTk_AllocationSemantics;
 "GC_THREAD_KIND_WORKER" = "MMTK_GC_THREAD_KIND_WORKER"
 "OBJREF_OFFSET" = "MMTK_OBJREF_OFFSET"
 "MIN_OBJ_ALIGN" = "MMTK_MIN_OBJ_ALIGN"
+"HiddenHeader" = "MMTk_HiddenHeader"
+"HAS_MOVED_GIVTBL" = "MMTK_HAS_MOVED_GIVTBL"
+"HIDDEN_SIZE_MASK" = "MMTK_HIDDEN_SIZE_MASK"

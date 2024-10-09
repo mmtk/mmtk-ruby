@@ -1,5 +1,5 @@
 use crate::api::RubyMutator;
-use crate::{upcalls, Ruby};
+use crate::{extra_assert, upcalls, Ruby};
 use mmtk::scheduler::GCWorker;
 use mmtk::util::{Address, ObjectReference, VMMutatorThread, VMWorkerThread};
 
@@ -9,8 +9,8 @@ pub const MIN_OBJ_ALIGN: usize = 8; // Even on 32-bit machine.  A Ruby object is
 
 pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
-const HAS_MOVED_GIVTBL: usize = 1 << 63;
-const HIDDEN_SIZE_MASK: usize = 0x0000FFFFFFFFFFFF;
+pub const HAS_MOVED_GIVTBL: usize = 0x8000000000000000;
+pub const HIDDEN_SIZE_MASK: usize = 0x0000FFFFFFFFFFFF;
 
 // Should keep in sync with C code.
 const RUBY_FL_EXIVAR: usize = 1 << 10;
@@ -18,6 +18,42 @@ const RUBY_FL_EXIVAR: usize = 1 << 10;
 // An opaque type for the C counterpart.
 #[allow(non_camel_case_types)]
 pub struct st_table;
+
+#[repr(C)]
+pub struct HiddenHeader {
+    prefix: usize,
+}
+
+impl HiddenHeader {
+    #[inline(always)]
+    fn assert_sane(&self) {
+        extra_assert!(
+            self.prefix & !(HAS_MOVED_GIVTBL | HIDDEN_SIZE_MASK) == 0,
+            "Hidden header is corrupted: {:x}",
+            self.prefix
+        );
+    }
+
+    pub fn payload_size(&self) -> usize {
+        self.assert_sane();
+        self.prefix & HIDDEN_SIZE_MASK
+    }
+
+    pub fn has_moved_givtbl(&mut self) -> bool {
+        self.assert_sane();
+        self.prefix & HAS_MOVED_GIVTBL != 0
+    }
+
+    pub fn set_has_moved_givtbl(&mut self) {
+        self.assert_sane();
+        self.prefix |= HAS_MOVED_GIVTBL;
+    }
+
+    pub fn clear_has_moved_givtbl(&mut self) {
+        self.assert_sane();
+        self.prefix &= !HAS_MOVED_GIVTBL;
+    }
+}
 
 /// Provide convenient methods for accessing Ruby objects.
 /// TODO: Wrap C functions in `RubyUpcalls` as Rust-friendly methods.
@@ -46,32 +82,28 @@ impl RubyObjectAccess {
         self.suffix_addr() + Self::suffix_size()
     }
 
-    fn hidden_field(&self) -> Address {
-        self.obj_start()
+    fn hidden_header(&self) -> &'static HiddenHeader {
+        unsafe { self.obj_start().as_ref() }
     }
 
-    fn load_hidden_field(&self) -> usize {
-        unsafe { self.hidden_field().load::<usize>() }
-    }
-
-    fn update_hidden_field<F>(&self, f: F)
-    where
-        F: FnOnce(usize) -> usize,
-    {
-        let old_value = self.load_hidden_field();
-        let new_value = f(old_value);
-        unsafe {
-            self.hidden_field().store(new_value);
-        }
+    fn hidden_header_mut(&self) -> &'static mut HiddenHeader {
+        unsafe { self.obj_start().as_mut_ref() }
     }
 
     pub fn payload_size(&self) -> usize {
-        self.load_hidden_field() & HIDDEN_SIZE_MASK
+        self.hidden_header().payload_size()
     }
 
-    pub fn set_payload_size(&self, size: usize) {
-        debug_assert!((size & HIDDEN_SIZE_MASK) == size);
-        self.update_hidden_field(|old| old & !HIDDEN_SIZE_MASK | size & HIDDEN_SIZE_MASK);
+    pub fn has_moved_givtbl(&self) -> bool {
+        self.hidden_header_mut().has_moved_givtbl()
+    }
+
+    pub fn set_has_moved_givtbl(&self) {
+        self.hidden_header_mut().set_has_moved_givtbl()
+    }
+
+    pub fn clear_has_moved_givtbl(&self) {
+        self.hidden_header_mut().clear_has_moved_givtbl()
     }
 
     fn flags_field(&self) -> Address {
@@ -84,18 +116,6 @@ impl RubyObjectAccess {
 
     pub fn has_exivar_flag(&self) -> bool {
         (self.load_flags() & RUBY_FL_EXIVAR) != 0
-    }
-
-    pub fn has_moved_givtbl(&self) -> bool {
-        (self.load_hidden_field() & HAS_MOVED_GIVTBL) != 0
-    }
-
-    pub fn set_has_moved_givtbl(&self) {
-        self.update_hidden_field(|old| old | HAS_MOVED_GIVTBL)
-    }
-
-    pub fn clear_has_moved_givtbl(&self) {
-        self.update_hidden_field(|old| old & !HAS_MOVED_GIVTBL)
     }
 
     pub fn prefix_size() -> usize {
