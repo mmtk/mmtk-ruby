@@ -1,0 +1,17 @@
+usdt:$MMTK:mmtk_ruby:pin_ppp_children {
+    if (@enable_print) {
+        printf("pin_ppp_children,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
+    }
+}
+
+usdt:$MMTK:mmtk_ruby:remove_dead_ppps {
+    if (@enable_print) {
+        printf("remove_dead_ppps,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
+    }
+}
+
+usdt:$MMTK:mmtk_ruby:unpin_ppp_children {
+    if (@enable_print) {
+        printf("unpin_ppp_children,meta,%d,%lu,%lu\n", tid, nsecs, arg0);
+    }
+}

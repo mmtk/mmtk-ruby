@@ -4,7 +4,7 @@ use crate::utils::ChunkedVecCollector;
 use crate::{extra_assert, is_mmtk_object_safe, upcalls, Ruby, RubySlot};
 use mmtk::scheduler::{GCWork, GCWorker, WorkBucketStage};
 use mmtk::util::{ObjectReference, VMWorkerThread};
-use mmtk::vm::{ObjectTracer, RootsWorkFactory, Scanning, SlotVisitor};
+use mmtk::vm::{ObjectTracer, ObjectTracerContext, RootsWorkFactory, Scanning, SlotVisitor};
 use mmtk::{Mutator, MutatorContext};
 
 pub struct VMScanning {}
@@ -135,18 +135,18 @@ impl Scanning<Ruby> for VMScanning {
 
     fn process_weak_refs(
         worker: &mut GCWorker<Ruby>,
-        tracer_context: impl mmtk::vm::ObjectTracerContext<Ruby>,
+        tracer_context: impl ObjectTracerContext<Ruby>,
     ) -> bool {
         crate::binding()
             .weak_proc
             .process_weak_stuff(worker, tracer_context);
-        crate::binding().ppp_registry.cleanup_ppps();
+        crate::binding().ppp_registry.cleanup_ppps(worker);
         false
     }
 
     fn forward_weak_refs(
         _worker: &mut GCWorker<Ruby>,
-        _tracer_context: impl mmtk::vm::ObjectTracerContext<Ruby>,
+        _tracer_context: impl ObjectTracerContext<Ruby>,
     ) {
         panic!("We can't use MarkCompact in Ruby.");
     }

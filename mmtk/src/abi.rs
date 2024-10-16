@@ -385,6 +385,7 @@ pub struct RubyUpcalls {
     pub scan_final_jobs_roots: extern "C" fn(),
     pub scan_roots_in_mutator_thread:
         extern "C" fn(mutator_tls: VMMutatorThread, worker_tls: VMWorkerThread),
+    pub is_no_longer_ppp: extern "C" fn(ObjectReference) -> bool,
     pub scan_object_ruby_style: extern "C" fn(object: ObjectReference),
     pub call_gc_mark_children: extern "C" fn(object: ObjectReference),
     pub call_obj_free: extern "C" fn(object: ObjectReference),
