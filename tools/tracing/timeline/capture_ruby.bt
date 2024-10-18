@@ -15,3 +15,15 @@ usdt:$MMTK:mmtk_ruby:unpin_ppp_children {
         printf("unpin_ppp_children,meta,%d,%lu,%lu\n", tid, nsecs, arg0);
     }
 }
+
+usdt:$MMTK:mmtk_ruby:weak_table_size_change {
+    if (@enable_print) {
+        printf("weak_table_size_change,meta,%d,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1);
+    }
+}
+
+usdt:$MMTK:mmtk_ruby:update_finalizer_and_obj_id_tables {
+    if (@enable_print) {
+        printf("update_finalizer_and_obj_id_tables,meta,%d,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2, arg3, arg4, arg5);
+    }
+}

@@ -28,3 +28,20 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                 wp["args"] |= {
                     "num_ppp_children": num_children,
                 }
+
+            case "weak_table_size_change":
+                old_entries, new_entries = [int(x) for x in args]
+                wp["args"] |= {
+                    "old_entries": old_entries,
+                    "new_entries": new_entries,
+                }
+
+            case "update_finalizer_and_obj_id_tables":
+                (old_finalizer, new_finalizer,
+                 old_obj_to_id, new_obj_to_id,
+                 old_id_to_obj, new_id_to_obj) = [int(x) for x in args]
+                wp["args"] |= {
+                    "finalizer": { "old_entries": old_finalizer, "new_entries": new_finalizer, },
+                    "obj_to_id": { "old_entries": old_obj_to_id, "new_entries": new_obj_to_id, },
+                    "id_to_obj": { "old_entries": old_id_to_obj, "new_entries": new_id_to_obj, },
+                }

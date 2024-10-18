@@ -67,7 +67,7 @@ impl WeakProcessor {
         worker.scheduler().work_buckets[WorkBucketStage::VMRefClosure].bulk_add(vec![
             Box::new(UpdateGenericIvTbl) as _,
             // Box::new(UpdateFrozenStringsTable) as _,
-            Box::new(UpdateFinalizerAndObjIdTable) as _,
+            Box::new(UpdateFinalizerAndObjIdTables) as _,
             // Box::new(UpdateGlobalSymbolsTable) as _,
             Box::new(UpdateOverloadedCmeTable) as _,
             Box::new(UpdateCiTable) as _,
@@ -266,26 +266,65 @@ define_global_table_processor!(UpdateGenericIvTbl, {
     WeakProcessor::update_generic_iv_tbl();
 });
 
+fn general_update_weak_table(getter: extern "C" fn() -> *mut st_table, cleaner: extern "C" fn()) {
+    let table = getter();
+    let old_size = (upcalls().st_get_num_entries)(table);
+    cleaner();
+    let new_size = (upcalls().st_get_num_entries)(table);
+    probe!(mmtk_ruby, weak_table_size_change, old_size, new_size);
+}
+
 define_global_table_processor!(UpdateFrozenStringsTable, {
-    (crate::upcalls().update_frozen_strings_table)()
+    general_update_weak_table(
+        upcalls().get_frozen_strings_table,
+        upcalls().update_frozen_strings_table,
+    );
 });
 
-define_global_table_processor!(UpdateFinalizerAndObjIdTable, {
-    // `update_finalizer_table` depends on the `obj_to_id_table`,
-    // therefore must be processed first.
-    (crate::upcalls().update_finalizer_table)();
-    (crate::upcalls().update_obj_id_tables)();
+define_global_table_processor!(UpdateFinalizerAndObjIdTables, {
+    let finalizer_table = (upcalls().get_finalizer_table)();
+    let obj_to_id_table = (upcalls().get_obj_to_id_table)();
+    let id_to_obj_table = (upcalls().get_id_to_obj_table)();
+
+    let old_size_finalizer = (upcalls().st_get_num_entries)(finalizer_table);
+    let old_size_obj_to_id = (upcalls().st_get_num_entries)(obj_to_id_table);
+    let old_size_id_to_obj = (upcalls().st_get_num_entries)(id_to_obj_table);
+
+    (upcalls().update_finalizer_and_obj_id_tables)();
+
+    let new_size_finalizer = (upcalls().st_get_num_entries)(finalizer_table);
+    let new_size_obj_to_id = (upcalls().st_get_num_entries)(obj_to_id_table);
+    let new_size_id_to_obj = (upcalls().st_get_num_entries)(id_to_obj_table);
+
+    probe!(
+        mmtk_ruby,
+        update_finalizer_and_obj_id_tables,
+        old_size_finalizer,
+        new_size_finalizer,
+        old_size_obj_to_id,
+        new_size_obj_to_id,
+        old_size_id_to_obj,
+        new_size_id_to_obj,
+    );
 });
 
 define_global_table_processor!(UpdateGlobalSymbolsTable, {
-    (crate::upcalls().update_global_symbols_table)()
+    general_update_weak_table(
+        upcalls().get_global_symbols_table,
+        upcalls().update_global_symbols_table,
+    );
 });
 
 define_global_table_processor!(UpdateOverloadedCmeTable, {
-    (crate::upcalls().update_overloaded_cme_table)()
+    general_update_weak_table(
+        upcalls().get_overloaded_cme_table,
+        upcalls().update_overloaded_cme_table,
+    );
 });
 
-define_global_table_processor!(UpdateCiTable, (crate::upcalls().update_ci_table)());
+define_global_table_processor!(UpdateCiTable, {
+    general_update_weak_table(upcalls().get_ci_table, upcalls().update_ci_table);
+});
 
 struct UpdateTableEntriesParallel {
     name: String,
