@@ -75,7 +75,7 @@ impl AfterAll {
         self.counter.fetch_add(n, Ordering::SeqCst);
     }
 
-    pub fn count_down(&self, worker: &mut GCWorker<Ruby>) {
+    pub fn count_down(&self, worker: &mut GCWorker<Ruby>) -> bool {
         let old = self.counter.fetch_sub(1, Ordering::SeqCst);
         if old == 1 {
             let packets = {
@@ -83,6 +83,9 @@ impl AfterAll {
                 std::mem::take(borrow.as_mut())
             };
             worker.scheduler().work_buckets[self.stage].bulk_add(packets);
+            return true;
         }
+
+        false
     }
 }

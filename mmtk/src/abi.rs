@@ -419,9 +419,9 @@ pub struct RubyUpcalls {
         weak_keys: bool,
         weak_records: bool,
         forward: bool,
-    ),
+    ) -> usize,
     pub st_update_bins_range:
-        extern "C" fn(table: *mut st_table, begin: libc::size_t, end: libc::size_t),
+        extern "C" fn(table: *mut st_table, begin: libc::size_t, end: libc::size_t) -> usize,
 }
 
 unsafe impl Sync for RubyUpcalls {}

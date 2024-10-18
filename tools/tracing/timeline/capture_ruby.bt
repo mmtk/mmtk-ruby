@@ -27,3 +27,27 @@ usdt:$MMTK:mmtk_ruby:update_finalizer_and_obj_id_tables {
         printf("update_finalizer_and_obj_id_tables,meta,%d,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2, arg3, arg4, arg5);
     }
 }
+
+usdt:$MMTK:mmtk_ruby:initial_weak_table_stats {
+    if (@enable_print) {
+        printf("initial_weak_table_stats,meta,%d,%lu,%lu,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, arg2, arg3, str(arg4, arg5));
+    }
+}
+
+usdt:$MMTK:mmtk_ruby:final_weak_table_stats {
+    if (@enable_print) {
+        printf("final_weak_table_stats,meta,%d,%lu,%lu,%s\n", tid, nsecs, arg0, str(arg1, arg2));
+    }
+}
+
+usdt:$MMTK:mmtk_ruby:update_table_entries_parallel {
+    if (@enable_print) {
+        printf("update_table_entries_parallel,meta,%d,%lu,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, arg2, str(arg3, arg4));
+    }
+}
+
+usdt:$MMTK:mmtk_ruby:update_table_bins_parallel {
+    if (@enable_print) {
+        printf("update_table_bins_parallel,meta,%d,%lu,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, arg2, str(arg3, arg4));
+    }
+}

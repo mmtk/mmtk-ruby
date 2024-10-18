@@ -45,3 +45,46 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                     "obj_to_id": { "old_entries": old_obj_to_id, "new_entries": new_obj_to_id, },
                     "id_to_obj": { "old_entries": old_id_to_obj, "new_entries": new_id_to_obj, },
                 }
+
+            case "initial_weak_table_stats":
+                entries_start, entries_bound, bins_num, num_entries = [int(x) for x in args[0:4]]
+                table_name = args[4]
+                gc["args"].setdefault(table_name, {})
+                gc["args"][table_name] |= {
+                    "entries_start": entries_start,
+                    "entries_bound": entries_bound,
+                    "bins_num": bins_num,
+                    "num_entries_before": num_entries,
+                }
+
+            case "final_weak_table_stats":
+                num_entries = int(args[0])
+                table_name = args[1]
+                gc["args"].setdefault(table_name, {})
+                gc["args"][table_name] |= {
+                    "num_entries_after": num_entries,
+                }
+
+            case "update_table_entries_parallel":
+                begin, end, deleted_entries = [int(x) for x in args[0:3]]
+                table_name = args[3]
+                num_entries = end - begin
+                wp["args"] |= {
+                    "begin": begin,
+                    "end": end,
+                    "num_entries": num_entries,
+                    "deleted_entries": deleted_entries,
+                    "table_name": table_name,
+                }
+
+            case "update_table_bins_parallel":
+                begin, end, deleted_bins = [int(x) for x in args[0:3]]
+                table_name = args[3]
+                num_bins = end - begin
+                wp["args"] |= {
+                    "begin": begin,
+                    "end": end,
+                    "num_bins": num_bins,
+                    "deleted_bins": deleted_bins,
+                    "table_name": table_name,
+                }
