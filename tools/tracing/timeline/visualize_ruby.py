@@ -96,3 +96,10 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                     "old_entries": old_entries,
                     "new_entries": new_entries,
                 }
+
+            case "process_obj_free_candidates":
+                old_candidates, new_candidates = [int(x) for x in args[0:2]]
+                wp["args"] |= {
+                    "old_candidates": old_candidates,
+                    "new_candidates": new_candidates,
+                }

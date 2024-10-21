@@ -57,3 +57,9 @@ usdt:$MMTK:mmtk_ruby:update_generic_iv_tbl {
         printf("update_generic_iv_tbl,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
     }
 }
+
+usdt:$MMTK:mmtk_ruby:process_obj_free_candidates {
+    if (@enable_print) {
+        printf("process_obj_free_candidates,meta,%d,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1);
+    }
+}

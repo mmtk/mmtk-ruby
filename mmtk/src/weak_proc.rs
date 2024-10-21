@@ -214,9 +214,8 @@ impl GCWork<Ruby> for ProcessObjFreeCandidates {
             .try_lock()
             .expect("It's GC time.  No mutators should hold this lock at this time.");
 
-        let n_cands = obj_free_candidates.len();
-
-        debug!("Total: {} candidates", n_cands);
+        let old_cands = obj_free_candidates.len();
+        debug!("Total: {} candidates", old_cands);
 
         // Process obj_free
         let mut new_candidates = Vec::new();
@@ -236,7 +235,9 @@ impl GCWork<Ruby> for ProcessObjFreeCandidates {
             }
         }
 
-        *obj_free_candidates = new_candidates;
+        let new_cands = new_candidates.len();
+       *obj_free_candidates = new_candidates;
+        probe!(mmtk_ruby, process_obj_free_candidates, old_cands, new_cands);
     }
 }
 
