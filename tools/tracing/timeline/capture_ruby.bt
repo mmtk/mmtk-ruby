@@ -51,3 +51,9 @@ usdt:$MMTK:mmtk_ruby:update_table_bins_parallel {
         printf("update_table_bins_parallel,meta,%d,%lu,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, arg2, str(arg3, arg4));
     }
 }
+
+usdt:$MMTK:mmtk_ruby:update_generic_iv_tbl {
+    if (@enable_print) {
+        printf("update_generic_iv_tbl,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
+    }
+}

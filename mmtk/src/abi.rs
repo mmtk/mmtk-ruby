@@ -398,6 +398,7 @@ pub struct RubyUpcalls {
     pub update_global_symbols_table: extern "C" fn(),
     pub update_overloaded_cme_table: extern "C" fn(),
     pub update_ci_table: extern "C" fn(),
+    pub get_generic_iv_tbl: extern "C" fn() -> *mut st_table,
     pub get_frozen_strings_table: extern "C" fn() -> *mut st_table,
     pub get_finalizer_table: extern "C" fn() -> *mut st_table,
     pub get_obj_to_id_table: extern "C" fn() -> *mut st_table,

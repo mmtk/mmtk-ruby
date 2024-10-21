@@ -177,23 +177,29 @@ impl WeakProcessor {
         // `ObjectModel::move`.  However, because `st_table` is not thread-safe, we postpone the
         // update until now in the VMRefClosure stage.
         log::debug!("Updating global ivtbl entries...");
-        {
+        let items_moved = {
             let mut moved_givtbl = crate::binding()
                 .moved_givtbl
                 .try_lock()
                 .expect("Should have no race in weak_proc");
+            let items_moved = moved_givtbl.len();
             for (new_objref, MovedGIVTblEntry { old_objref, .. }) in moved_givtbl.drain() {
                 trace!("  givtbl {} -> {}", old_objref, new_objref);
                 RubyObjectAccess::from_objref(new_objref).clear_has_moved_givtbl();
                 (upcalls().move_givtbl)(old_objref, new_objref);
             }
-        }
-        log::debug!("Updated global ivtbl entries.");
+            items_moved
+        };
+        log::debug!("Updated global ivtbl entries.  {items_moved} items moved.");
 
         // Clean up entries for dead objects.
-        log::debug!("Cleaning up global ivtbl entries...");
+        let generic_iv_tbl = (upcalls().get_generic_iv_tbl)();
+        let old_size = (upcalls().st_get_num_entries)(generic_iv_tbl);
+        log::debug!("Cleaning up global ivtbl entries ({old_size} entries before)...");
         (crate::upcalls().cleanup_generic_iv_tbl)();
-        log::debug!("Cleaning up global ivtbl entries.");
+        let new_size = (upcalls().st_get_num_entries)(generic_iv_tbl);
+        log::debug!("Cleaning up global ivtbl entries ({new_size} entries after).");
+        probe!(mmtk_ruby, update_generic_iv_tbl, items_moved, old_size, new_size);
     }
 }
 
