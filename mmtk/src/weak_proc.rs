@@ -199,7 +199,13 @@ impl WeakProcessor {
         (crate::upcalls().cleanup_generic_iv_tbl)();
         let new_size = (upcalls().st_get_num_entries)(generic_iv_tbl);
         log::debug!("Cleaning up global ivtbl entries ({new_size} entries after).");
-        probe!(mmtk_ruby, update_generic_iv_tbl, items_moved, old_size, new_size);
+        probe!(
+            mmtk_ruby,
+            update_generic_iv_tbl,
+            items_moved,
+            old_size,
+            new_size
+        );
     }
 }
 
@@ -236,7 +242,7 @@ impl GCWork<Ruby> for ProcessObjFreeCandidates {
         }
 
         let new_cands = new_candidates.len();
-       *obj_free_candidates = new_candidates;
+        *obj_free_candidates = new_candidates;
         probe!(mmtk_ruby, process_obj_free_candidates, old_cands, new_cands);
     }
 }
@@ -462,7 +468,12 @@ impl GCWork<Ruby> for UpdateWbUnprotectedObjectsList {
         let new_size = objects.len();
         debug!("Retained {new_size} live WB-unprotected objects.");
 
-        probe!(mmtk_ruby, update_wb_unprotected_objects_list, old_size, new_size);
+        probe!(
+            mmtk_ruby,
+            update_wb_unprotected_objects_list,
+            old_size,
+            new_size
+        );
     }
 }
 
