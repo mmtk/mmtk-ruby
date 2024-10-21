@@ -125,3 +125,13 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                         "diff": new_candidates - old_candidates,
                     },
                 }
+
+            case "update_wb_unprotected_objects_list":
+                before, after = [int(x) for x in args[0:2]]
+                wp["args"] |= {
+                    "wb_unprotected_objects": {
+                        "before": before,
+                        "after": after,
+                        "diff": after - before,
+                    },
+                }

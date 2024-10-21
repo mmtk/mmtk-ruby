@@ -440,8 +440,9 @@ impl GCWork<Ruby> for UpdateWbUnprotectedObjectsList {
         );
 
         let old_objects = std::mem::take(&mut *objects);
+        let old_size = old_objects.len();
 
-        debug!("Updating {} WB-unprotected objects", old_objects.len());
+        debug!("Updating {old_size} WB-unprotected objects");
 
         for object in old_objects {
             if object.is_reachable() {
@@ -458,7 +459,10 @@ impl GCWork<Ruby> for UpdateWbUnprotectedObjectsList {
             }
         }
 
-        debug!("Retained {} live WB-unprotected objects.", objects.len());
+        let new_size = objects.len();
+        debug!("Retained {new_size} live WB-unprotected objects.");
+
+        probe!(mmtk_ruby, update_wb_unprotected_objects_list, old_size, new_size);
     }
 }
 
