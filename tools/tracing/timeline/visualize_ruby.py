@@ -7,9 +7,11 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                 num_ppps, num_no_longer_ppps, num_pinned_children = [int(x) for x in args]
                 num_still_ppps = num_ppps - num_no_longer_ppps
                 wp["args"] |= {
-                    "num_ppps": num_ppps,
-                    "num_no_longer_ppps": num_no_longer_ppps,
-                    "num_still_ppps": num_still_ppps,
+                    "num_ppps": {
+                        "total": num_ppps,
+                        "still_ppps": num_still_ppps,
+                        "no_longer_ppps": num_no_longer_ppps,
+                    },
                     "num_pinned_children": num_pinned_children,
                 }
 
@@ -17,9 +19,12 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                 num_ppps, num_no_longer_ppps, num_dead_ppps = [int(x) for x in args]
                 num_retained_ppps = num_ppps - num_no_longer_ppps - num_dead_ppps
                 wp["args"] |= {
-                    "num_ppps": num_ppps,
-                    "num_no_longer_ppps": num_no_longer_ppps,
-                    "num_dead_ppps": num_dead_ppps,
+                    "num_ppps": {
+                        "total (before)": num_ppps,
+                        "dead": num_dead_ppps,
+                        "no_longer_ppps": num_no_longer_ppps,
+                        "retained (after)": num_retained_ppps,
+                    },
                     "num_retained_ppps": num_retained_ppps,
                 }
 
@@ -30,20 +35,23 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                 }
 
             case "weak_table_size_change":
-                old_entries, new_entries = [int(x) for x in args]
+                before, after = [int(x) for x in args]
                 wp["args"] |= {
-                    "old_entries": old_entries,
-                    "new_entries": new_entries,
+                    "entries": {
+                        "before": before,
+                        "after": after,
+                        "diff": after - before,
+                    },
                 }
 
             case "update_finalizer_and_obj_id_tables":
-                (old_finalizer, new_finalizer,
-                 old_obj_to_id, new_obj_to_id,
-                 old_id_to_obj, new_id_to_obj) = [int(x) for x in args]
+                (finalizer_before, finalizer_after,
+                 obj_to_id_before, obj_to_id_after,
+                 id_to_obj_before, id_to_obj_after) = [int(x) for x in args]
                 wp["args"] |= {
-                    "finalizer": { "old_entries": old_finalizer, "new_entries": new_finalizer, },
-                    "obj_to_id": { "old_entries": old_obj_to_id, "new_entries": new_obj_to_id, },
-                    "id_to_obj": { "old_entries": old_id_to_obj, "new_entries": new_id_to_obj, },
+                    "finalizer": { "before": finalizer_before, "after": finalizer_after, "diff": finalizer_after - finalizer_before },
+                    "obj_to_id": { "before": obj_to_id_before, "after": obj_to_id_after, "diff": obj_to_id_after - obj_to_id_before },
+                    "id_to_obj": { "before": id_to_obj_before, "after": id_to_obj_after, "diff": id_to_obj_after - id_to_obj_before },
                 }
 
             case "initial_weak_table_stats":
@@ -64,6 +72,14 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                 gc["args"][table_name] |= {
                     "num_entries_after": num_entries,
                 }
+                if "num_entries_before" in gc["args"][table_name]:
+                    before = gc["args"][table_name].pop("num_entries_before")
+                    after = gc["args"][table_name].pop("num_entries_after")
+                    gc["args"][table_name]["entries"] = {
+                        "before": before,
+                        "after": after,
+                        "diff": after - before,
+                    }
 
             case "update_table_entries_parallel":
                 begin, end, deleted_entries = [int(x) for x in args[0:3]]
@@ -93,13 +109,19 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                 entries_moved, old_entries, new_entries = [int(x) for x in args[0:3]]
                 wp["args"] |= {
                     "entries_moved": entries_moved,
-                    "old_entries": old_entries,
-                    "new_entries": new_entries,
+                    "entries": {
+                        "before": old_entries,
+                        "after": new_entries,
+                        "diff": new_entries - old_entries,
+                    },
                 }
 
             case "process_obj_free_candidates":
                 old_candidates, new_candidates = [int(x) for x in args[0:2]]
                 wp["args"] |= {
-                    "old_candidates": old_candidates,
-                    "new_candidates": new_candidates,
+                    "candidates": {
+                        "before": old_candidates,
+                        "after": new_candidates,
+                        "diff": new_candidates - old_candidates,
+                    },
                 }
