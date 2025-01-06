@@ -302,12 +302,23 @@ fn general_update_weak_table(getter: extern "C" fn() -> *mut st_table, cleaner: 
     probe!(mmtk_ruby, weak_table_size_change, old_size, new_size);
 }
 
-define_global_table_processor!(UpdateFrozenStringsTable, {
-    general_update_weak_table(
-        upcalls().get_frozen_strings_table,
-        upcalls().update_frozen_strings_table,
-    );
-});
+#[allow(dead_code)]
+mod unused {
+    use super::*;
+    define_global_table_processor!(UpdateFrozenStringsTable, {
+        general_update_weak_table(
+            upcalls().get_frozen_strings_table,
+            upcalls().update_frozen_strings_table,
+        );
+    });
+
+    define_global_table_processor!(UpdateGlobalSymbolsTable, {
+        general_update_weak_table(
+            upcalls().get_global_symbols_table,
+            upcalls().update_global_symbols_table,
+        );
+    });
+}
 
 define_global_table_processor!(UpdateFinalizerAndObjIdTables, {
     let finalizer_table = (upcalls().get_finalizer_table)();
@@ -333,13 +344,6 @@ define_global_table_processor!(UpdateFinalizerAndObjIdTables, {
         new_size_obj_to_id,
         old_size_id_to_obj,
         new_size_id_to_obj,
-    );
-});
-
-define_global_table_processor!(UpdateGlobalSymbolsTable, {
-    general_update_weak_table(
-        upcalls().get_global_symbols_table,
-        upcalls().update_global_symbols_table,
     );
 });
 

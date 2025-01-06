@@ -6,7 +6,7 @@ extern crate log;
 extern crate probe;
 
 use std::collections::HashSet;
-use std::panic::PanicInfo;
+use std::panic::PanicHookInfo;
 use std::sync::Mutex;
 use std::thread::ThreadId;
 
@@ -95,7 +95,7 @@ pub(crate) fn is_gc_thread(thread_id: ThreadId) -> bool {
     gc_threads.contains(&thread_id)
 }
 
-fn handle_gc_thread_panic(panic_info: &PanicInfo) {
+fn handle_gc_thread_panic(panic_info: &PanicHookInfo) {
     eprintln!("ERROR: An MMTk GC thread panicked.  This is a bug.");
     eprintln!("{panic_info}");
 
