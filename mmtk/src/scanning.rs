@@ -10,6 +10,11 @@ use mmtk::{Mutator, MutatorContext};
 pub struct VMScanning {}
 
 impl Scanning<Ruby> for VMScanning {
+    /// CRuby may do some non-thread-safe operations, such as cleaning up the call cache, while
+    /// scanning an object.  We force each object to be scanned at most once during each GC.  This
+    /// currently only affects the MarkSweep plan.
+    const UNIQUE_OBJECT_ENQUEUING: bool = true;
+
     fn support_slot_enqueuing(_tls: VMWorkerThread, _object: ObjectReference) -> bool {
         false
     }
