@@ -204,6 +204,11 @@ pub extern "C" fn mmtk_disable_collection() {
 }
 
 #[no_mangle]
+pub extern "C" fn mmtk_is_collection_enabled() -> bool {
+    BINDING_FAST.gc_enabled.load(Ordering::Relaxed)
+}
+
+#[no_mangle]
 pub extern "C" fn mmtk_plan_name() -> *const libc::c_char {
     crate::binding().get_plan_name_c()
 }
@@ -246,8 +251,12 @@ pub extern "C" fn mmtk_is_mmtk_object(addr: Address) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_handle_user_collection_request(tls: VMMutatorThread) {
-    memory_manager::handle_user_collection_request::<Ruby>(mmtk(), tls);
+pub extern "C" fn mmtk_handle_user_collection_request(
+    tls: VMMutatorThread,
+    force: bool,
+    exhaustive: bool,
+) {
+    crate::mmtk().handle_user_collection_request(tls, force, exhaustive);
 }
 
 #[no_mangle]
