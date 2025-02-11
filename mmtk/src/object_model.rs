@@ -85,8 +85,6 @@ impl ObjectModel<Ruby> for VMObjectModel {
                     },
                 );
             }
-            let to_acc = RubyObjectAccess::from_objref(to_obj);
-            to_acc.set_has_moved_givtbl();
         }
 
         to_obj

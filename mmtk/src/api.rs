@@ -5,6 +5,7 @@ use std::ffi::CStr;
 use std::sync::atomic::Ordering;
 
 use crate::abi;
+use crate::abi::HiddenHeader;
 use crate::abi::RawVecOfObjRef;
 use crate::abi::RubyBindingOptions;
 use crate::abi::RubyObjectAccess;
@@ -385,4 +386,10 @@ pub extern "C" fn mmtk_enumerate_objects(
     crate::mmtk().enumerate_objects(|object| {
         callback(object, data);
     })
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_hidden_header_is_sane(hidden_header: *const HiddenHeader) -> bool {
+    let hidden_header = unsafe { &*hidden_header };
+    hidden_header.is_sane()
 }

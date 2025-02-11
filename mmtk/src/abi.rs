@@ -9,7 +9,6 @@ pub const MIN_OBJ_ALIGN: usize = 8; // Even on 32-bit machine.  A Ruby object is
 
 pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
-pub const HAS_MOVED_GIVTBL: usize = 0x8000000000000000;
 pub const HIDDEN_SIZE_MASK: usize = 0x0000FFFFFFFFFFFF;
 
 // Should keep in sync with C code.
@@ -21,14 +20,19 @@ pub struct st_table;
 
 #[repr(C)]
 pub struct HiddenHeader {
-    prefix: usize,
+    pub prefix: usize,
 }
 
 impl HiddenHeader {
     #[inline(always)]
+    pub fn is_sane(&self) -> bool {
+        self.prefix & !HIDDEN_SIZE_MASK == 0
+    }
+
+    #[inline(always)]
     fn assert_sane(&self) {
         extra_assert!(
-            self.prefix & !(HAS_MOVED_GIVTBL | HIDDEN_SIZE_MASK) == 0,
+            self.is_sane(),
             "Hidden header is corrupted: {:x}",
             self.prefix
         );
@@ -37,21 +41,6 @@ impl HiddenHeader {
     pub fn payload_size(&self) -> usize {
         self.assert_sane();
         self.prefix & HIDDEN_SIZE_MASK
-    }
-
-    pub fn has_moved_givtbl(&mut self) -> bool {
-        self.assert_sane();
-        self.prefix & HAS_MOVED_GIVTBL != 0
-    }
-
-    pub fn set_has_moved_givtbl(&mut self) {
-        self.assert_sane();
-        self.prefix |= HAS_MOVED_GIVTBL;
-    }
-
-    pub fn clear_has_moved_givtbl(&mut self) {
-        self.assert_sane();
-        self.prefix &= !HAS_MOVED_GIVTBL;
     }
 }
 
@@ -86,24 +75,13 @@ impl RubyObjectAccess {
         unsafe { self.obj_start().as_ref() }
     }
 
+    #[allow(unused)] // Maybe we need to mutate the hidden header in the future.
     fn hidden_header_mut(&self) -> &'static mut HiddenHeader {
         unsafe { self.obj_start().as_mut_ref() }
     }
 
     pub fn payload_size(&self) -> usize {
         self.hidden_header().payload_size()
-    }
-
-    pub fn has_moved_givtbl(&self) -> bool {
-        self.hidden_header_mut().has_moved_givtbl()
-    }
-
-    pub fn set_has_moved_givtbl(&self) {
-        self.hidden_header_mut().set_has_moved_givtbl()
-    }
-
-    pub fn clear_has_moved_givtbl(&self) {
-        self.hidden_header_mut().clear_has_moved_givtbl()
     }
 
     fn flags_field(&self) -> Address {
@@ -133,25 +111,17 @@ impl RubyObjectAccess {
     }
 
     pub fn get_givtbl(&self) -> *mut libc::c_void {
-        if self.has_moved_givtbl() {
-            let moved_givtbl = crate::binding().moved_givtbl.lock().unwrap();
-            moved_givtbl
-                .get(&self.objref)
-                .unwrap_or_else(|| {
-                    panic!(
-                        "Object {} has HAS_MOVED_GIVTBL flag but not an entry in `moved_givtbl`",
-                        self.objref
-                    )
-                })
-                .gen_ivtbl
-        } else {
-            self.get_original_givtbl().unwrap_or_else(|| {
+        self.get_original_givtbl()
+            .or_else(|| {
+                let moved_givtbl = crate::binding().moved_givtbl.lock().unwrap();
+                moved_givtbl.get(&self.objref).map(|entry| entry.gen_ivtbl)
+            })
+            .unwrap_or_else(|| {
                 panic!(
-                    "Object {} does not have HAS_MOVED_GIVTBL flag or original givtbl",
+                    "The givtbl of object {} is not found in generic_iv_tbl_ or binding().moved_givtbl",
                     self.objref
                 )
             })
-        }
     }
 
     pub fn get_original_givtbl(&self) -> Option<*mut libc::c_void> {

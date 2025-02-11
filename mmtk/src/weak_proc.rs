@@ -7,7 +7,7 @@ use mmtk::{
 };
 
 use crate::{
-    abi::{st_table, GCThreadTLS, RubyObjectAccess},
+    abi::{st_table, GCThreadTLS},
     binding::MovedGIVTblEntry,
     extra_assert, is_mmtk_object_safe, upcalls,
     utils::AfterAll,
@@ -185,7 +185,6 @@ impl WeakProcessor {
             let items_moved = moved_givtbl.len();
             for (new_objref, MovedGIVTblEntry { old_objref, .. }) in moved_givtbl.drain() {
                 trace!("  givtbl {} -> {}", old_objref, new_objref);
-                RubyObjectAccess::from_objref(new_objref).clear_has_moved_givtbl();
                 (upcalls().move_givtbl)(old_objref, new_objref);
             }
             items_moved
