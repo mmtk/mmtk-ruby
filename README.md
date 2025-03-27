@@ -1,11 +1,25 @@
-# MMTk binding for Ruby
+# MMTk binding for CRuby
 
-This repository hosts the binding code for MMTk Ruby. 
+This repository hosts the binding code for MMTk Ruby.
 
-In order for this binding to work, changes have been made to the Ruby core
-language to support generic third party heaps. Eventually, the aim is to
-upstream these changes. Until then, the modifications can be found [under our
-fork here](https://github.com/mmtk/ruby), on the default branch named `mmtk`.
+[CRuby 3.4] officially introduced the modular GC feature, and an [MMTk
+binding][ruby-mmtk] has been included upstream as a bundled gem.
+
+[CRuby 3.4]: https://www.ruby-lang.org/en/news/2024/12/25/ruby-3-4-0-released/
+[ruby-mmtk]: https://github.com/ruby/mmtk
+
+This repository, on the other hand, was created years before the introduction of
+modular GC in the official Ruby code base.  It is the place we have been doing
+experiments, and it still holds features that have not been upstreamed.
+
+This repository depends on [our CRuby fork].  The fork took the approach of
+overriding the behavior of the default GC of CRuby and wiring related functions
+to this MMTk binding.  The fork also made aggressive changes to the CRuby
+runtime, such as introducing the `imemo:strbuf` and `imemo:objbuf` types to
+eliminate the buffers allocated from `malloc` in `String`, `Array` and
+`MatchData`.
+
+[our CRuby fork]: https://github.com/mmtk/ruby
 
 This repository is based on previous work of Angus Atkinson, and the original
 repository can be found [here](https://github.com/angussidney/mmtk-ruby.git),
