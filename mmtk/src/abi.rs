@@ -349,6 +349,7 @@ pub struct RubyUpcalls {
     pub scan_end_proc_roots: extern "C" fn(),
     pub scan_global_tbl_roots: extern "C" fn(),
     pub scan_yjit_roots: extern "C" fn(),
+    pub scan_global_symbols_roots: extern "C" fn(),
     pub scan_finalizer_tbl_roots: extern "C" fn(),
     pub scan_obj_to_id_tbl_roots: extern "C" fn(),
     pub scan_misc_roots: extern "C" fn(),
