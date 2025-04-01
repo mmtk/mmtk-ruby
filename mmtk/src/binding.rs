@@ -28,9 +28,7 @@ impl Default for RubyBindingFast {
 impl RubyBindingFast {
     pub const fn new() -> Self {
         Self {
-            // Mimic the old behavior when the gc_enabled flag was in mmtk-core.
-            // We may refactor it so that it is false by default.
-            gc_enabled: AtomicBool::new(true),
+            gc_enabled: AtomicBool::new(false),
         }
     }
 }
