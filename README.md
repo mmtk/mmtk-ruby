@@ -269,8 +269,6 @@ We excluded some tests when testing against MMTk.  Those test cases are listed
 in `test/.excludes-mmtk` in the [`mmtk/ruby`](https://github.com/mmtk/ruby.git)
 repository.
 
--   Test cases that involve Ractors are excluded because it is currently not a
-    priority to support Ractors.
 -   Test cases that involve YJIT are excluded because we have not started
     working on YJIT support, yet.
 -   Some tests involve implementation details of CRuby's default GC, such as
