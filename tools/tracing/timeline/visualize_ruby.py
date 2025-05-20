@@ -46,12 +46,10 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
 
             case "update_finalizer_and_obj_id_tables":
                 (finalizer_before, finalizer_after,
-                 obj_to_id_before, obj_to_id_after,
-                 id_to_obj_before, id_to_obj_after) = [int(x) for x in args]
+                 id2ref_before, id2ref_after) = [int(x) for x in args]
                 wp["args"] |= {
                     "finalizer": { "before": finalizer_before, "after": finalizer_after, "diff": finalizer_after - finalizer_before },
-                    "obj_to_id": { "before": obj_to_id_before, "after": obj_to_id_after, "diff": obj_to_id_after - obj_to_id_before },
-                    "id_to_obj": { "before": id_to_obj_before, "after": id_to_obj_after, "diff": id_to_obj_after - id_to_obj_before },
+                    "id2ref": { "before": id2ref_before, "after": id2ref_after, "diff": id2ref_after - id2ref_before },
                 }
 
             case "initial_weak_table_stats":

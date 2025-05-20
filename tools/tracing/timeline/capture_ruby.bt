@@ -24,7 +24,7 @@ usdt:$MMTK:mmtk_ruby:weak_table_size_change {
 
 usdt:$MMTK:mmtk_ruby:update_finalizer_and_obj_id_tables {
     if (@enable_print) {
-        printf("update_finalizer_and_obj_id_tables,meta,%d,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2, arg3, arg4, arg5);
+        printf("update_finalizer_and_obj_id_tables,meta,%d,%lu,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2, arg3);
     }
 }
 

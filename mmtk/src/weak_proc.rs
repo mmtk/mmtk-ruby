@@ -66,7 +66,7 @@ impl WeakProcessor {
 
         worker.scheduler().work_buckets[WorkBucketStage::VMRefClosure].bulk_add(vec![
             Box::new(UpdateGenericIvTbl) as _,
-            // Box::new(UpdateFrozenStringsTable) as _,
+            Box::new(UpdateFrozenStringsTable) as _,
             Box::new(UpdateFinalizerAndObjIdTables) as _,
             // Box::new(UpdateGlobalSymbolsTable) as _,
             Box::new(UpdateOverloadedCmeTable) as _,
@@ -75,16 +75,6 @@ impl WeakProcessor {
         ]);
 
         let forward = crate::mmtk().get_plan().current_gc_may_move_object();
-
-        // Experimenting with frozen strings table
-        Self::process_weak_table_chunked(
-            "frozen strings",
-            (upcalls().get_frozen_strings_table)(),
-            true,
-            false,
-            forward,
-            worker,
-        );
 
         Self::process_weak_table_chunked(
             "global symbols",
@@ -293,6 +283,13 @@ define_global_table_processor!(UpdateGenericIvTbl, {
     WeakProcessor::update_generic_iv_tbl();
 });
 
+define_global_table_processor!(UpdateFrozenStringsTable, {
+    let old_size = (upcalls().get_num_fstrings)();
+    (upcalls().update_frozen_strings_table)();
+    let new_size = (upcalls().get_num_fstrings)();
+    probe!(mmtk_ruby, weak_table_size_change, old_size, new_size);
+});
+
 fn general_update_weak_table(getter: extern "C" fn() -> *mut st_table, cleaner: extern "C" fn()) {
     let table = getter();
     let old_size = (upcalls().st_get_num_entries)(table);
@@ -304,13 +301,6 @@ fn general_update_weak_table(getter: extern "C" fn() -> *mut st_table, cleaner: 
 #[allow(dead_code)]
 mod unused {
     use super::*;
-    define_global_table_processor!(UpdateFrozenStringsTable, {
-        general_update_weak_table(
-            upcalls().get_frozen_strings_table,
-            upcalls().update_frozen_strings_table,
-        );
-    });
-
     define_global_table_processor!(UpdateGlobalSymbolsTable, {
         general_update_weak_table(
             upcalls().get_global_symbols_table,
@@ -321,26 +311,21 @@ mod unused {
 
 define_global_table_processor!(UpdateFinalizerAndObjIdTables, {
     let finalizer_table = (upcalls().get_finalizer_table)();
-    let obj_to_id_table = (upcalls().get_obj_to_id_table)();
-    let id_to_obj_table = (upcalls().get_id_to_obj_table)();
+    let id2ref_table = (upcalls().get_id2ref_table)();
 
     let old_size_finalizer = (upcalls().st_get_num_entries)(finalizer_table);
-    let old_size_obj_to_id = (upcalls().st_get_num_entries)(obj_to_id_table);
-    let old_size_id_to_obj = (upcalls().st_get_num_entries)(id_to_obj_table);
+    let old_size_id_to_obj = (upcalls().st_get_num_entries)(id2ref_table);
 
     (upcalls().update_finalizer_and_obj_id_tables)();
 
     let new_size_finalizer = (upcalls().st_get_num_entries)(finalizer_table);
-    let new_size_obj_to_id = (upcalls().st_get_num_entries)(obj_to_id_table);
-    let new_size_id_to_obj = (upcalls().st_get_num_entries)(id_to_obj_table);
+    let new_size_id_to_obj = (upcalls().st_get_num_entries)(id2ref_table);
 
     probe!(
         mmtk_ruby,
         update_finalizer_and_obj_id_tables,
         old_size_finalizer,
         new_size_finalizer,
-        old_size_obj_to_id,
-        new_size_obj_to_id,
         old_size_id_to_obj,
         new_size_id_to_obj,
     );

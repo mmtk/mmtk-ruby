@@ -89,7 +89,6 @@ impl Scanning<Ruby> for VMScanning {
             Box::new(ScanYjitRoots::new(factory.clone())),
             Box::new(ScanGlobalSymbolsRoots::new(factory.clone())),
             Box::new(ScanFinalizerTblRoots::new(factory.clone())),
-            Box::new(ScanObjToIdTblRoots::new(factory.clone())),
             Box::new(ScanMiscRoots::new(factory.clone())),
             Box::new(ScanFinalJobsRoots::new(factory.clone())),
         ];
@@ -266,10 +265,6 @@ define_global_root_scanner!(ScanGlobalSymbolsRoots, {
 
 define_global_root_scanner!(ScanFinalizerTblRoots, {
     (crate::upcalls().scan_finalizer_tbl_roots)();
-});
-
-define_global_root_scanner!(ScanObjToIdTblRoots, {
-    (crate::upcalls().scan_obj_to_id_tbl_roots)();
 });
 
 define_global_root_scanner!(ScanMiscRoots, {
