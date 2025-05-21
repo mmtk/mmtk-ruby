@@ -50,6 +50,3 @@ clear_old_copy = []
 
 # Enable extra assertions in release build.  For debugging.
 extra_assert = []
-
-# Force Immix-based plans to move as many objects as possible.  For debugging.
-immix_stress_copying = ["mmtk/immix_stress_copying"]
