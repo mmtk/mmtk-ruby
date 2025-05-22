@@ -309,17 +309,25 @@ mod unused {
     });
 }
 
+fn st_get_num_entries_maybe_null(table: *const st_table) -> usize {
+    if table.is_null() {
+        0
+    } else {
+        (upcalls().st_get_num_entries)(table)
+    }
+}
+
 define_global_table_processor!(UpdateFinalizerAndObjIdTables, {
     let finalizer_table = (upcalls().get_finalizer_table)();
     let id2ref_table = (upcalls().get_id2ref_table)();
 
     let old_size_finalizer = (upcalls().st_get_num_entries)(finalizer_table);
-    let old_size_id_to_obj = (upcalls().st_get_num_entries)(id2ref_table);
+    let old_size_id_to_obj = st_get_num_entries_maybe_null(id2ref_table);
 
     (upcalls().update_finalizer_and_obj_id_tables)();
 
     let new_size_finalizer = (upcalls().st_get_num_entries)(finalizer_table);
-    let new_size_id_to_obj = (upcalls().st_get_num_entries)(id2ref_table);
+    let new_size_id_to_obj = st_get_num_entries_maybe_null(id2ref_table);
 
     probe!(
         mmtk_ruby,
