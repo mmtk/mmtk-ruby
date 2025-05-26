@@ -12,7 +12,7 @@ concurrency:
 jobs:
   style-check:
     name: Style check
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: true
     steps:
@@ -29,7 +29,7 @@ jobs:
 
   build-and-test:
     name: Build and test
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: true
       matrix:
