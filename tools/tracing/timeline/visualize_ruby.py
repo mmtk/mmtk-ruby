@@ -103,7 +103,7 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                     "table_name": table_name,
                 }
 
-            case "update_generic_iv_tbl":
+            case "update_generic_fields_tbl":
                 entries_moved, old_entries, new_entries = [int(x) for x in args[0:3]]
                 wp["args"] |= {
                     "entries_moved": entries_moved,

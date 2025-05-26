@@ -313,9 +313,9 @@ pub extern "C" fn mmtk_register_ppps(objects: *const ObjectReference, len: usize
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_get_givtbl_during_gc(object: ObjectReference) -> *mut libc::c_void {
+pub extern "C" fn mmtk_get_gen_fields_tbl_during_gc(object: ObjectReference) -> *mut libc::c_void {
     let acc = RubyObjectAccess::from_objref(object);
-    acc.get_givtbl()
+    acc.get_gen_fields_tbl()
 }
 
 #[no_mangle]

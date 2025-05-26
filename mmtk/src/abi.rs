@@ -110,22 +110,22 @@ impl RubyObjectAccess {
         Self::prefix_size() + self.payload_size() + Self::suffix_size()
     }
 
-    pub fn get_givtbl(&self) -> *mut libc::c_void {
-        self.get_original_givtbl()
+    pub fn get_gen_fields_tbl(&self) -> *mut libc::c_void {
+        self.get_original_gen_fields_tbl()
             .or_else(|| {
-                let moved_givtbl = crate::binding().moved_givtbl.lock().unwrap();
-                moved_givtbl.get(&self.objref).map(|entry| entry.gen_ivtbl)
+                let moved_gen_fields_tables = crate::binding().moved_gen_fields_tables.lock().unwrap();
+                moved_gen_fields_tables.get(&self.objref).map(|entry| entry.gen_fields_tbl)
             })
             .unwrap_or_else(|| {
                 panic!(
-                    "The givtbl of object {} is not found in generic_iv_tbl_ or binding().moved_givtbl",
+                    "The gen_fields_tbl of object {} is not found in generic_fields_tbl_ or binding().moved_gen_fields_tables",
                     self.objref
                 )
             })
     }
 
-    pub fn get_original_givtbl(&self) -> Option<*mut libc::c_void> {
-        let addr = (upcalls().get_original_givtbl)(self.objref);
+    pub fn get_original_gen_fields_tbl(&self) -> Option<*mut libc::c_void> {
+        let addr = (upcalls().get_original_gen_fields_tbl)(self.objref);
         if addr.is_null() {
             None
         } else {
@@ -359,16 +359,17 @@ pub struct RubyUpcalls {
     pub scan_object_ruby_style: extern "C" fn(object: ObjectReference),
     pub call_gc_mark_children: extern "C" fn(object: ObjectReference),
     pub call_obj_free: extern "C" fn(object: ObjectReference),
-    pub cleanup_generic_iv_tbl: extern "C" fn(),
-    pub get_original_givtbl: extern "C" fn(object: ObjectReference) -> *mut libc::c_void,
-    pub move_givtbl: extern "C" fn(old_objref: ObjectReference, new_objref: ObjectReference),
+    pub cleanup_generic_fields_tbl: extern "C" fn(),
+    pub get_original_gen_fields_tbl: extern "C" fn(object: ObjectReference) -> *mut libc::c_void,
+    pub reinsert_generic_fields_tbl_entry:
+        extern "C" fn(old_objref: ObjectReference, new_objref: ObjectReference),
     pub vm_live_bytes: extern "C" fn() -> usize,
     pub update_frozen_strings_table: extern "C" fn(),
     pub update_finalizer_and_obj_id_tables: extern "C" fn(),
     pub update_global_symbols_table: extern "C" fn(),
     pub update_overloaded_cme_table: extern "C" fn(),
     pub update_ci_table: extern "C" fn(),
-    pub get_generic_iv_tbl: extern "C" fn() -> *mut st_table,
+    pub get_generic_fields_tbl: extern "C" fn() -> *mut st_table,
     pub get_num_fstrings: extern "C" fn() -> usize,
     pub get_finalizer_table: extern "C" fn() -> *mut st_table,
     pub get_id2ref_table: extern "C" fn() -> *mut st_table,

@@ -52,9 +52,9 @@ usdt:$MMTK:mmtk_ruby:update_table_bins_parallel {
     }
 }
 
-usdt:$MMTK:mmtk_ruby:update_generic_iv_tbl {
+usdt:$MMTK:mmtk_ruby:update_generic_fields_tbl {
     if (@enable_print) {
-        printf("update_generic_iv_tbl,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
+        printf("update_generic_fields_tbl,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
     }
 }
 

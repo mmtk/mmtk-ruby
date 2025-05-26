@@ -43,10 +43,10 @@ impl ObjectModel<Ruby> for VMObjectModel {
         copy_context: &mut GCWorkerCopyContext<Ruby>,
     ) -> ObjectReference {
         let from_acc = RubyObjectAccess::from_objref(from);
-        let maybe_givtbl = from_acc.has_exivar_flag().then(|| {
+        let maybe_gen_fields_tbl = from_acc.has_exivar_flag().then(|| {
             from_acc
-                .get_original_givtbl()
-                .unwrap_or_else(|| panic!("Object {} has FL_EXIVAR but no givtbl.", from))
+                .get_original_gen_fields_tbl()
+                .unwrap_or_else(|| panic!("Object {} has FL_EXIVAR but no gen_fields_tbl.", from))
         });
         let from_start = from_acc.obj_start();
         let object_size = from_acc.object_size();
@@ -74,17 +74,16 @@ impl ObjectModel<Ruby> for VMObjectModel {
             unsafe { std::ptr::write_bytes::<u8>(from_start.to_mut_ptr(), 0, object_size) }
         }
 
-        if let Some(givtbl) = maybe_givtbl {
-            {
-                let mut moved_givtbl = crate::binding().moved_givtbl.lock().unwrap();
-                moved_givtbl.insert(
-                    to_obj,
-                    crate::binding::MovedGIVTblEntry {
-                        old_objref: from,
-                        gen_ivtbl: givtbl,
-                    },
-                );
-            }
+        if let Some(gen_fields_tbl) = maybe_gen_fields_tbl {
+            let mut moved_gen_fields_tables =
+                crate::binding().moved_gen_fields_tables.lock().unwrap();
+            moved_gen_fields_tables.insert(
+                to_obj,
+                crate::binding::MovedGenFieldsTablesEntry {
+                    old_objref: from,
+                    gen_fields_tbl,
+                },
+            );
         }
 
         to_obj

@@ -49,9 +49,9 @@ impl RubyBindingFastMut {
     }
 }
 
-pub(crate) struct MovedGIVTblEntry {
+pub(crate) struct MovedGenFieldsTablesEntry {
     pub old_objref: ObjectReference,
-    pub gen_ivtbl: *mut c_void,
+    pub gen_fields_tbl: *mut c_void,
 }
 
 pub struct RubyBinding {
@@ -61,7 +61,7 @@ pub struct RubyBinding {
     pub plan_name: Mutex<Option<CString>>,
     pub weak_proc: WeakProcessor,
     pub ppp_registry: PPPRegistry,
-    pub(crate) moved_givtbl: Mutex<HashMap<ObjectReference, MovedGIVTblEntry>>,
+    pub(crate) moved_gen_fields_tables: Mutex<HashMap<ObjectReference, MovedGenFieldsTablesEntry>>,
     pub gc_thread_join_handles: Mutex<Vec<JoinHandle<()>>>,
     pub wb_unprotected_objects: Mutex<HashSet<ObjectReference>>,
     pub st_entries_chunk_size: usize,
@@ -104,7 +104,7 @@ impl RubyBinding {
             plan_name: Mutex::new(None),
             weak_proc: WeakProcessor::new(),
             ppp_registry: PPPRegistry::new(),
-            moved_givtbl: Default::default(),
+            moved_gen_fields_tables: Default::default(),
             gc_thread_join_handles: Default::default(),
             wb_unprotected_objects: Default::default(),
             st_entries_chunk_size,

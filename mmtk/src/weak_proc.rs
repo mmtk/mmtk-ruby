@@ -8,7 +8,7 @@ use mmtk::{
 
 use crate::{
     abi::{st_table, GCThreadTLS},
-    binding::MovedGIVTblEntry,
+    binding::MovedGenFieldsTablesEntry,
     extra_assert, is_mmtk_object_safe, upcalls,
     utils::AfterAll,
     Ruby,
@@ -65,7 +65,7 @@ impl WeakProcessor {
         worker.add_work(WorkBucketStage::VMRefClosure, ProcessObjFreeCandidates);
 
         worker.scheduler().work_buckets[WorkBucketStage::VMRefClosure].bulk_add(vec![
-            Box::new(UpdateGenericIvTbl) as _,
+            Box::new(UpdateGenericFieldsTbl) as _,
             Box::new(UpdateFrozenStringsTable) as _,
             Box::new(UpdateFinalizerAndObjIdTables) as _,
             // Box::new(UpdateGlobalSymbolsTable) as _,
@@ -160,37 +160,43 @@ impl WeakProcessor {
 
     /// Update generic instance variable tables.
     ///
-    /// Objects moved during GC should have their entries in the global `generic_iv_tbl_` hash
+    /// Objects moved during GC should have their entries in the global `generic_fields_tbl_` hash
     /// table updated, and dead objects should have their entries removed.
-    fn update_generic_iv_tbl() {
-        // Update `generic_iv_tbl_` entries for moved objects.  We could update the entries in
+    fn update_generic_fields_tbl() {
+        // Update `generic_fields_tbl_` entries for moved objects.  We could update the entries in
         // `ObjectModel::move`.  However, because `st_table` is not thread-safe, we postpone the
         // update until now in the VMRefClosure stage.
-        log::debug!("Updating global ivtbl entries...");
+        log::debug!("Updating generic_fields_tbl_ entries...");
         let items_moved = {
-            let mut moved_givtbl = crate::binding()
-                .moved_givtbl
+            let mut moved_gen_fields_tables = crate::binding()
+                .moved_gen_fields_tables
                 .try_lock()
                 .expect("Should have no race in weak_proc");
-            let items_moved = moved_givtbl.len();
-            for (new_objref, MovedGIVTblEntry { old_objref, .. }) in moved_givtbl.drain() {
-                trace!("  givtbl {} -> {}", old_objref, new_objref);
-                (upcalls().move_givtbl)(old_objref, new_objref);
+            let items_moved = moved_gen_fields_tables.len();
+            for (new_objref, MovedGenFieldsTablesEntry { old_objref, .. }) in
+                moved_gen_fields_tables.drain()
+            {
+                trace!(
+                    "  generic_fields_tbl_ entry: {} -> {}",
+                    old_objref,
+                    new_objref
+                );
+                (upcalls().reinsert_generic_fields_tbl_entry)(old_objref, new_objref);
             }
             items_moved
         };
-        log::debug!("Updated global ivtbl entries.  {items_moved} items moved.");
+        log::debug!("Updated generic_fields_tbl_ entries.  {items_moved} items moved.");
 
         // Clean up entries for dead objects.
-        let generic_iv_tbl = (upcalls().get_generic_iv_tbl)();
-        let old_size = (upcalls().st_get_num_entries)(generic_iv_tbl);
-        log::debug!("Cleaning up global ivtbl entries ({old_size} entries before)...");
-        (crate::upcalls().cleanup_generic_iv_tbl)();
-        let new_size = (upcalls().st_get_num_entries)(generic_iv_tbl);
-        log::debug!("Cleaning up global ivtbl entries ({new_size} entries after).");
+        let generic_fields_tbl = (upcalls().get_generic_fields_tbl)();
+        let old_size = (upcalls().st_get_num_entries)(generic_fields_tbl);
+        log::debug!("Cleaning up generic_fields_tbl_ entries ({old_size} entries before)...");
+        (crate::upcalls().cleanup_generic_fields_tbl)();
+        let new_size = (upcalls().st_get_num_entries)(generic_fields_tbl);
+        log::debug!("Cleaned up generic_fields_tbl_ entries ({new_size} entries after).");
         probe!(
             mmtk_ruby,
-            update_generic_iv_tbl,
+            update_generic_fields_tbl,
             items_moved,
             old_size,
             new_size
@@ -279,8 +285,8 @@ macro_rules! define_global_table_processor {
     };
 }
 
-define_global_table_processor!(UpdateGenericIvTbl, {
-    WeakProcessor::update_generic_iv_tbl();
+define_global_table_processor!(UpdateGenericFieldsTbl, {
+    WeakProcessor::update_generic_fields_tbl();
 });
 
 define_global_table_processor!(UpdateFrozenStringsTable, {
