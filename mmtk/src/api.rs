@@ -1,5 +1,6 @@
-// All functions here are extern function. There is no point for marking them as unsafe.
-#![allow(clippy::not_unsafe_ptr_arg_deref)]
+// Functions in this module are unsafe for one reason:
+// They are called by C functions and they need to pass raw pointers to Rust.
+#![allow(clippy::missing_safety_doc)]
 
 use std::ffi::CStr;
 use std::sync::atomic::Ordering;
@@ -46,14 +47,14 @@ pub extern "C" fn mmtk_builder_default() -> *mut MMTKBuilder {
 /// Let the MMTKBuilder read options from environment variables,
 /// such as `MMTK_THREADS`.
 #[no_mangle]
-pub extern "C" fn mmtk_builder_read_env_var_settings(builder: *mut MMTKBuilder) {
+pub unsafe extern "C" fn mmtk_builder_read_env_var_settings(builder: *mut MMTKBuilder) {
     let builder = unsafe { &mut *builder };
     builder.options.read_env_var_settings();
 }
 
 /// Set the GC trigger to dynamically adjust heap size.
 #[no_mangle]
-pub extern "C" fn mmtk_builder_set_dynamic_heap_size(
+pub unsafe extern "C" fn mmtk_builder_set_dynamic_heap_size(
     builder: *mut MMTKBuilder,
     low: usize,
     high: usize,
@@ -67,7 +68,10 @@ pub extern "C" fn mmtk_builder_set_dynamic_heap_size(
 
 /// Set the GC trigger to use a fixed heap size.
 #[no_mangle]
-pub extern "C" fn mmtk_builder_set_fixed_heap_size(builder: *mut MMTKBuilder, heap_size: usize) {
+pub unsafe extern "C" fn mmtk_builder_set_fixed_heap_size(
+    builder: *mut MMTKBuilder,
+    heap_size: usize,
+) {
     let builder = unsafe { &mut *builder };
     builder
         .options
@@ -78,7 +82,10 @@ pub extern "C" fn mmtk_builder_set_fixed_heap_size(builder: *mut MMTKBuilder, he
 /// Set the plan.  `plan_name` is a case-sensitive C-style ('\0'-terminated) string matching
 /// one of the cases of `enum PlanSelector`.
 #[no_mangle]
-pub extern "C" fn mmtk_builder_set_plan(builder: *mut MMTKBuilder, plan_name: *const libc::c_char) {
+pub unsafe extern "C" fn mmtk_builder_set_plan(
+    builder: *mut MMTKBuilder,
+    plan_name: *const libc::c_char,
+) {
     let builder = unsafe { &mut *builder };
     let plan_name_cstr = unsafe { CStr::from_ptr(plan_name) };
     let plan_name_str = plan_name_cstr.to_str().unwrap();
@@ -88,21 +95,21 @@ pub extern "C" fn mmtk_builder_set_plan(builder: *mut MMTKBuilder, plan_name: *c
 
 /// Query if the selected plan is MarkSweep.
 #[no_mangle]
-pub extern "C" fn mmtk_builder_is_mark_sweep(builder: *mut MMTKBuilder) -> bool {
+pub unsafe extern "C" fn mmtk_builder_is_mark_sweep(builder: *mut MMTKBuilder) -> bool {
     let builder = unsafe { &mut *builder };
     matches!(*builder.options.plan, PlanSelector::MarkSweep)
 }
 
 /// Query if the selected plan is Immix.
 #[no_mangle]
-pub extern "C" fn mmtk_builder_is_immix(builder: *mut MMTKBuilder) -> bool {
+pub unsafe extern "C" fn mmtk_builder_is_immix(builder: *mut MMTKBuilder) -> bool {
     let builder = unsafe { &mut *builder };
     matches!(*builder.options.plan, PlanSelector::Immix)
 }
 
 /// Query if the selected plan is StickyImmix.
 #[no_mangle]
-pub extern "C" fn mmtk_builder_is_sticky_immix(builder: *mut MMTKBuilder) -> bool {
+pub unsafe extern "C" fn mmtk_builder_is_sticky_immix(builder: *mut MMTKBuilder) -> bool {
     let builder = unsafe { &mut *builder };
     matches!(*builder.options.plan, PlanSelector::StickyImmix)
 }
@@ -114,7 +121,7 @@ pub extern "C" fn mmtk_builder_is_sticky_immix(builder: *mut MMTKBuilder) -> boo
 ///     the MMTk instance.
 /// -   `upcalls` points to the struct that contains upcalls.  It is allocated in C as static.
 #[no_mangle]
-pub extern "C" fn mmtk_init_binding(
+pub unsafe extern "C" fn mmtk_init_binding(
     builder: *mut MMTKBuilder,
     binding_options: *const RubyBindingOptions,
     upcalls: *const abi::RubyUpcalls,
@@ -139,13 +146,13 @@ pub extern "C" fn mmtk_bind_mutator(tls: VMMutatorThread) -> *mut RubyMutator {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_destroy_mutator(mutator: *mut RubyMutator) {
+pub unsafe extern "C" fn mmtk_destroy_mutator(mutator: *mut RubyMutator) {
     let mut boxed_mutator = unsafe { Box::from_raw(mutator) };
     memory_manager::destroy_mutator(boxed_mutator.as_mut())
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_alloc(
+pub unsafe extern "C" fn mmtk_alloc(
     mutator: *mut RubyMutator,
     size: usize,
     align: usize,
@@ -163,7 +170,7 @@ pub extern "C" fn mmtk_alloc(
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_post_alloc(
+pub unsafe extern "C" fn mmtk_post_alloc(
     mutator: *mut RubyMutator,
     refer: ObjectReference,
     bytes: usize,
@@ -285,7 +292,7 @@ pub extern "C" fn mmtk_add_obj_free_candidate(object: ObjectReference) {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_add_obj_free_candidates(objects: *const ObjectReference, len: usize) {
+pub unsafe extern "C" fn mmtk_add_obj_free_candidates(objects: *const ObjectReference, len: usize) {
     let objects_slice = unsafe { std::slice::from_raw_parts(objects, len) };
     binding().weak_proc.add_obj_free_candidates(objects_slice)
 }
@@ -307,7 +314,7 @@ pub extern "C" fn mmtk_register_ppp(object: ObjectReference) {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_register_ppps(objects: *const ObjectReference, len: usize) {
+pub unsafe extern "C" fn mmtk_register_ppps(objects: *const ObjectReference, len: usize) {
     let objects_slice = unsafe { std::slice::from_raw_parts(objects, len) };
     crate::binding().ppp_registry.register_many(objects_slice)
 }
@@ -371,7 +378,7 @@ pub extern "C" fn mmtk_is_object_wb_unprotected(object: ObjectReference) -> bool
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_object_reference_write_post(
+pub unsafe extern "C" fn mmtk_object_reference_write_post(
     mutator: *mut RubyMutator,
     object: ObjectReference,
 ) {
@@ -398,7 +405,7 @@ pub extern "C" fn mmtk_enumerate_objects(
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_hidden_header_is_sane(hidden_header: *const HiddenHeader) -> bool {
+pub unsafe extern "C" fn mmtk_hidden_header_is_sane(hidden_header: *const HiddenHeader) -> bool {
     let hidden_header = unsafe { &*hidden_header };
     hidden_header.is_sane()
 }

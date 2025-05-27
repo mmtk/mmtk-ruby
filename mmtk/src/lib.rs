@@ -1,3 +1,5 @@
+#![warn(unsafe_op_in_unsafe_fn)]
+
 extern crate libc;
 extern crate mmtk;
 #[macro_use]
