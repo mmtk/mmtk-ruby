@@ -8,7 +8,6 @@ use mmtk::{
 
 use crate::{
     abi::{st_table, GCThreadTLS},
-    binding::MovedGenFieldsTablesEntry,
     extra_assert, is_mmtk_object_safe, upcalls,
     utils::AfterAll,
     Ruby,
@@ -157,51 +156,6 @@ impl WeakProcessor {
 
         worker.scheduler().work_buckets[WorkBucketStage::VMRefClosure].bulk_add(entries_packets);
     }
-
-    /// Update generic instance variable tables.
-    ///
-    /// Objects moved during GC should have their entries in the global `generic_fields_tbl_` hash
-    /// table updated, and dead objects should have their entries removed.
-    fn update_generic_fields_tbl() {
-        // Update `generic_fields_tbl_` entries for moved objects.  We could update the entries in
-        // `ObjectModel::move`.  However, because `st_table` is not thread-safe, we postpone the
-        // update until now in the VMRefClosure stage.
-        log::debug!("Updating generic_fields_tbl_ entries...");
-        let items_moved = {
-            let mut moved_gen_fields_tables = crate::binding()
-                .moved_gen_fields_tables
-                .try_lock()
-                .expect("Should have no race in weak_proc");
-            let items_moved = moved_gen_fields_tables.len();
-            for (new_objref, MovedGenFieldsTablesEntry { old_objref, .. }) in
-                moved_gen_fields_tables.drain()
-            {
-                trace!(
-                    "  generic_fields_tbl_ entry: {} -> {}",
-                    old_objref,
-                    new_objref
-                );
-                (upcalls().reinsert_generic_fields_tbl_entry)(old_objref, new_objref);
-            }
-            items_moved
-        };
-        log::debug!("Updated generic_fields_tbl_ entries.  {items_moved} items moved.");
-
-        // Clean up entries for dead objects.
-        let generic_fields_tbl = (upcalls().get_generic_fields_tbl)();
-        let old_size = (upcalls().st_get_num_entries)(generic_fields_tbl);
-        log::debug!("Cleaning up generic_fields_tbl_ entries ({old_size} entries before)...");
-        (crate::upcalls().cleanup_generic_fields_tbl)();
-        let new_size = (upcalls().st_get_num_entries)(generic_fields_tbl);
-        log::debug!("Cleaned up generic_fields_tbl_ entries ({new_size} entries after).");
-        probe!(
-            mmtk_ruby,
-            update_generic_fields_tbl,
-            items_moved,
-            old_size,
-            new_size
-        );
-    }
 }
 
 struct ProcessObjFreeCandidates;
@@ -286,7 +240,10 @@ macro_rules! define_global_table_processor {
 }
 
 define_global_table_processor!(UpdateGenericFieldsTbl, {
-    WeakProcessor::update_generic_fields_tbl();
+    general_update_weak_table(
+        upcalls().get_generic_fields_tbl,
+        upcalls().update_generic_fields_table,
+    );
 });
 
 define_global_table_processor!(UpdateFrozenStringsTable, {

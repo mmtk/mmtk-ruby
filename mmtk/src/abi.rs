@@ -11,9 +11,6 @@ pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
 pub const HIDDEN_SIZE_MASK: usize = 0x0000FFFFFFFFFFFF;
 
-// Should keep in sync with C code.
-const RUBY_FL_EXIVAR: usize = 1 << 10;
-
 // An opaque type for the C counterpart.
 #[allow(non_camel_case_types)]
 pub struct st_table;
@@ -92,8 +89,8 @@ impl RubyObjectAccess {
         unsafe { self.flags_field().load::<usize>() }
     }
 
-    pub fn has_exivar_flag(&self) -> bool {
-        (self.load_flags() & RUBY_FL_EXIVAR) != 0
+    pub fn has_exivar(&self) -> bool {
+        (upcalls().has_exivar)(self.objref)
     }
 
     pub fn prefix_size() -> usize {
@@ -108,29 +105,6 @@ impl RubyObjectAccess {
 
     pub fn object_size(&self) -> usize {
         Self::prefix_size() + self.payload_size() + Self::suffix_size()
-    }
-
-    pub fn get_gen_fields_tbl(&self) -> *mut libc::c_void {
-        self.get_original_gen_fields_tbl()
-            .or_else(|| {
-                let moved_gen_fields_tables = crate::binding().moved_gen_fields_tables.lock().unwrap();
-                moved_gen_fields_tables.get(&self.objref).map(|entry| entry.gen_fields_tbl)
-            })
-            .unwrap_or_else(|| {
-                panic!(
-                    "The gen_fields_tbl of object {} is not found in generic_fields_tbl_ or binding().moved_gen_fields_tables",
-                    self.objref
-                )
-            })
-    }
-
-    pub fn get_original_gen_fields_tbl(&self) -> Option<*mut libc::c_void> {
-        let addr = (upcalls().get_original_gen_fields_tbl)(self.objref);
-        if addr.is_null() {
-            None
-        } else {
-            Some(addr)
-        }
     }
 }
 
@@ -359,11 +333,9 @@ pub struct RubyUpcalls {
     pub scan_object_ruby_style: extern "C" fn(object: ObjectReference),
     pub call_gc_mark_children: extern "C" fn(object: ObjectReference),
     pub call_obj_free: extern "C" fn(object: ObjectReference),
-    pub cleanup_generic_fields_tbl: extern "C" fn(),
-    pub get_original_gen_fields_tbl: extern "C" fn(object: ObjectReference) -> *mut libc::c_void,
-    pub reinsert_generic_fields_tbl_entry:
-        extern "C" fn(old_objref: ObjectReference, new_objref: ObjectReference),
     pub vm_live_bytes: extern "C" fn() -> usize,
+    pub has_exivar: extern "C" fn(object: ObjectReference) -> bool,
+    pub update_generic_fields_table: extern "C" fn(),
     pub update_frozen_strings_table: extern "C" fn(),
     pub update_finalizer_and_obj_id_tables: extern "C" fn(),
     pub update_global_symbols_table: extern "C" fn(),

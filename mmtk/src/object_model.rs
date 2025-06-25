@@ -43,11 +43,7 @@ impl ObjectModel<Ruby> for VMObjectModel {
         copy_context: &mut GCWorkerCopyContext<Ruby>,
     ) -> ObjectReference {
         let from_acc = RubyObjectAccess::from_objref(from);
-        let maybe_gen_fields_tbl = from_acc.has_exivar_flag().then(|| {
-            from_acc
-                .get_original_gen_fields_tbl()
-                .unwrap_or_else(|| panic!("Object {} has FL_EXIVAR but no gen_fields_tbl.", from))
-        });
+        let has_exivar = from_acc.has_exivar();
         let from_start = from_acc.obj_start();
         let object_size = from_acc.object_size();
         let to_start = copy_context.alloc_copy(from, object_size, MIN_OBJ_ALIGN, 0, semantics);
@@ -74,16 +70,12 @@ impl ObjectModel<Ruby> for VMObjectModel {
             unsafe { std::ptr::write_bytes::<u8>(from_start.to_mut_ptr(), 0, object_size) }
         }
 
-        if let Some(gen_fields_tbl) = maybe_gen_fields_tbl {
-            let mut moved_gen_fields_tables =
-                crate::binding().moved_gen_fields_tables.lock().unwrap();
-            moved_gen_fields_tables.insert(
-                to_obj,
-                crate::binding::MovedGenFieldsTablesEntry {
-                    old_objref: from,
-                    gen_fields_tbl,
-                },
-            );
+        if has_exivar {
+            let mut backwarding_table = crate::binding().backwarding_table.lock().unwrap();
+            trace!("Inserting into backwarding table: from: {from} <- to_obj: {to_obj}");
+            backwarding_table.insert(to_obj, from);
+        } else {
+            trace!("No exivar: from: {from} <- to_obj: {to_obj}");
         }
 
         to_obj

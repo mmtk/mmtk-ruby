@@ -9,7 +9,6 @@ use crate::abi;
 use crate::abi::HiddenHeader;
 use crate::abi::RawVecOfObjRef;
 use crate::abi::RubyBindingOptions;
-use crate::abi::RubyObjectAccess;
 use crate::binding;
 use crate::binding::RubyBinding;
 use crate::mmtk;
@@ -320,9 +319,9 @@ pub unsafe extern "C" fn mmtk_register_ppps(objects: *const ObjectReference, len
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_get_gen_fields_tbl_during_gc(object: ObjectReference) -> *mut libc::c_void {
-    let acc = RubyObjectAccess::from_objref(object);
-    acc.get_gen_fields_tbl()
+pub extern "C" fn mmtk_get_backwarded_object(object: ObjectReference) -> ObjectReference {
+    let backwarding_table = crate::binding().backwarding_table.lock().unwrap();
+    backwarding_table.get(&object).copied().unwrap_or(object)
 }
 
 #[no_mangle]

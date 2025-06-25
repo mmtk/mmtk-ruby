@@ -1,7 +1,7 @@
 use crate::abi::GCThreadTLS;
 
 use crate::api::RubyMutator;
-use crate::{mmtk, upcalls, Ruby};
+use crate::{binding, mmtk, upcalls, Ruby};
 use mmtk::memory_manager;
 use mmtk::scheduler::*;
 use mmtk::util::{VMMutatorThread, VMThread, VMWorkerThread};
@@ -73,6 +73,14 @@ impl Collection<Ruby> for VMCollection {
 
     fn vm_live_bytes() -> usize {
         (upcalls().vm_live_bytes)()
+    }
+
+    fn post_forwarding(_tls: VMWorkerThread) {
+        let mut backwarding_table = binding()
+            .backwarding_table
+            .try_lock()
+            .expect("Should not have race during post_forwarding");
+        backwarding_table.clear();
     }
 }
 

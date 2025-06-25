@@ -5,7 +5,6 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
 use std::thread::JoinHandle;
 
-use libc::c_void;
 use mmtk::util::ObjectReference;
 use mmtk::MMTK;
 
@@ -49,11 +48,6 @@ impl RubyBindingFastMut {
     }
 }
 
-pub(crate) struct MovedGenFieldsTablesEntry {
-    pub old_objref: ObjectReference,
-    pub gen_fields_tbl: *mut c_void,
-}
-
 pub struct RubyBinding {
     pub mmtk: &'static MMTK<Ruby>,
     pub options: RubyBindingOptions,
@@ -61,7 +55,9 @@ pub struct RubyBinding {
     pub plan_name: Mutex<Option<CString>>,
     pub weak_proc: WeakProcessor,
     pub ppp_registry: PPPRegistry,
-    pub(crate) moved_gen_fields_tables: Mutex<HashMap<ObjectReference, MovedGenFieldsTablesEntry>>,
+    /// A "backwarding" table that can look up the old addresses of some moved objects,
+    /// specifically objects using generic fields table.
+    pub(crate) backwarding_table: Mutex<HashMap<ObjectReference, ObjectReference>>,
     pub gc_thread_join_handles: Mutex<Vec<JoinHandle<()>>>,
     pub wb_unprotected_objects: Mutex<HashSet<ObjectReference>>,
     pub st_entries_chunk_size: usize,
@@ -104,7 +100,7 @@ impl RubyBinding {
             plan_name: Mutex::new(None),
             weak_proc: WeakProcessor::new(),
             ppp_registry: PPPRegistry::new(),
-            moved_gen_fields_tables: Default::default(),
+            backwarding_table: Default::default(),
             gc_thread_join_handles: Default::default(),
             wb_unprotected_objects: Default::default(),
             st_entries_chunk_size,
