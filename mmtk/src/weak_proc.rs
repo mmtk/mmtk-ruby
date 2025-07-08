@@ -13,6 +13,9 @@ use crate::{
     Ruby,
 };
 
+/// Set this to true to use chunked processing optimization for the global symbols table.
+const SPECIALIZE_GLOBAL_SYMBOLS_TABLE_PROCESSING: bool = true;
+
 pub struct WeakProcessor {
     /// Objects that needs `obj_free` called when dying.
     /// If it is a bottleneck, replace it with a lock-free data structure,
@@ -64,25 +67,34 @@ impl WeakProcessor {
         worker.add_work(WorkBucketStage::VMRefClosure, ProcessObjFreeCandidates);
 
         worker.scheduler().work_buckets[WorkBucketStage::VMRefClosure].bulk_add(vec![
+            // BEGIN: Weak tables
+            // Note: Follow the order of `rb_gc_vm_weak_table_foreach in `gc.c`
+            Box::new(UpdateCiTable) as _,
+            Box::new(UpdateOverloadedCmeTable) as _,
+            // global symbols table specialized
+            Box::new(UpdateFinalizerAndObjIdTables) as _,
             Box::new(UpdateGenericFieldsTbl) as _,
             Box::new(UpdateFrozenStringsTable) as _,
-            Box::new(UpdateFinalizerAndObjIdTables) as _,
-            // Box::new(UpdateGlobalSymbolsTable) as _,
-            Box::new(UpdateOverloadedCmeTable) as _,
-            Box::new(UpdateCiTable) as _,
+            Box::new(UpdateCCRefinementTable) as _,
+            // END: Weak tables
             Box::new(UpdateWbUnprotectedObjectsList) as _,
         ]);
 
         let forward = crate::mmtk().get_plan().current_gc_may_move_object();
 
-        Self::process_weak_table_chunked(
-            "global symbols",
-            (upcalls().get_global_symbols_table)(),
-            false,
-            true,
-            forward,
-            worker,
-        );
+        if SPECIALIZE_GLOBAL_SYMBOLS_TABLE_PROCESSING {
+            Self::process_weak_table_chunked(
+                "global symbols",
+                (upcalls().get_global_symbols_table)(),
+                false,
+                true,
+                forward,
+                worker,
+            );
+        } else {
+            worker.scheduler().work_buckets[WorkBucketStage::VMRefClosure]
+                .add_boxed(Box::new(UpdateGlobalSymbolsTable) as _);
+        }
     }
 
     pub fn process_weak_table_chunked(
@@ -239,58 +251,42 @@ macro_rules! define_global_table_processor {
     };
 }
 
-define_global_table_processor!(UpdateGenericFieldsTbl, {
+fn general_update_weak_table(size_getter: extern "C" fn() -> usize, cleaner: extern "C" fn()) {
+    let old_size = size_getter();
+    cleaner();
+    let new_size = size_getter();
+    probe!(mmtk_ruby, weak_table_size_change, old_size, new_size);
+}
+
+///////// BEGIN: Simple table updating work packets ////////
+// Note: Follow the order of `rb_gc_vm_weak_table_foreach in `gc.c`
+
+define_global_table_processor!(UpdateCiTable, {
+    general_update_weak_table(upcalls().get_ci_table_size, upcalls().update_ci_table);
+});
+
+define_global_table_processor!(UpdateOverloadedCmeTable, {
     general_update_weak_table(
-        upcalls().get_generic_fields_tbl,
-        upcalls().update_generic_fields_table,
+        upcalls().get_overloaded_cme_table_size,
+        upcalls().update_overloaded_cme_table,
     );
 });
 
-define_global_table_processor!(UpdateFrozenStringsTable, {
-    let old_size = (upcalls().get_num_fstrings)();
-    (upcalls().update_frozen_strings_table)();
-    let new_size = (upcalls().get_num_fstrings)();
-    probe!(mmtk_ruby, weak_table_size_change, old_size, new_size);
+define_global_table_processor!(UpdateGlobalSymbolsTable, {
+    general_update_weak_table(
+        upcalls().get_global_symbols_table_size,
+        upcalls().update_global_symbols_table,
+    );
 });
 
-fn general_update_weak_table(getter: extern "C" fn() -> *mut st_table, cleaner: extern "C" fn()) {
-    let table = getter();
-    let old_size = (upcalls().st_get_num_entries)(table);
-    cleaner();
-    let new_size = (upcalls().st_get_num_entries)(table);
-    probe!(mmtk_ruby, weak_table_size_change, old_size, new_size);
-}
-
-#[allow(dead_code)]
-mod unused {
-    use super::*;
-    define_global_table_processor!(UpdateGlobalSymbolsTable, {
-        general_update_weak_table(
-            upcalls().get_global_symbols_table,
-            upcalls().update_global_symbols_table,
-        );
-    });
-}
-
-fn st_get_num_entries_maybe_null(table: *const st_table) -> usize {
-    if table.is_null() {
-        0
-    } else {
-        (upcalls().st_get_num_entries)(table)
-    }
-}
-
 define_global_table_processor!(UpdateFinalizerAndObjIdTables, {
-    let finalizer_table = (upcalls().get_finalizer_table)();
-    let id2ref_table = (upcalls().get_id2ref_table)();
-
-    let old_size_finalizer = (upcalls().st_get_num_entries)(finalizer_table);
-    let old_size_id_to_obj = st_get_num_entries_maybe_null(id2ref_table);
+    let old_size_finalizer = (upcalls().get_finalizer_table_size)();
+    let old_size_id_to_obj = (upcalls().get_id2ref_table_size)();
 
     (upcalls().update_finalizer_and_obj_id_tables)();
 
-    let new_size_finalizer = (upcalls().st_get_num_entries)(finalizer_table);
-    let new_size_id_to_obj = st_get_num_entries_maybe_null(id2ref_table);
+    let new_size_finalizer = (upcalls().get_finalizer_table_size)();
+    let new_size_id_to_obj = (upcalls().get_id2ref_table_size)();
 
     probe!(
         mmtk_ruby,
@@ -302,16 +298,28 @@ define_global_table_processor!(UpdateFinalizerAndObjIdTables, {
     );
 });
 
-define_global_table_processor!(UpdateOverloadedCmeTable, {
+define_global_table_processor!(UpdateGenericFieldsTbl, {
     general_update_weak_table(
-        upcalls().get_overloaded_cme_table,
-        upcalls().update_overloaded_cme_table,
+        upcalls().get_generic_fields_tbl_size,
+        upcalls().update_generic_fields_table,
     );
 });
 
-define_global_table_processor!(UpdateCiTable, {
-    general_update_weak_table(upcalls().get_ci_table, upcalls().update_ci_table);
+define_global_table_processor!(UpdateFrozenStringsTable, {
+    general_update_weak_table(
+        upcalls().get_frozen_strings_table_size,
+        upcalls().update_frozen_strings_table,
+    );
 });
+
+define_global_table_processor!(UpdateCCRefinementTable, {
+    general_update_weak_table(
+        upcalls().get_cc_refinement_table_size,
+        upcalls().update_cc_refinement_table,
+    );
+});
+
+///////// END: Simple table updating work packets ////////
 
 struct UpdateTableEntriesParallel {
     name: &'static str,
