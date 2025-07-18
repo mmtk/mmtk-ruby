@@ -28,6 +28,36 @@ usdt:$MMTK:mmtk_ruby:update_finalizer_and_obj_id_tables {
     }
 }
 
+// BEGIN: weak concurrent set
+
+usdt:$MMTK:mmtk_ruby:initial_weak_concurrent_set_stats {
+    if (@enable_print) {
+        printf("initial_weak_concurrent_set_stats,meta,%d,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, str(arg2, arg3));
+    }
+}
+
+usdt:$MMTK:mmtk_ruby:final_weak_concurrent_set_stats {
+    if (@enable_print) {
+        printf("final_weak_concurrent_set_stats,meta,%d,%lu,%lu\n", tid, nsecs, arg0);
+    }
+}
+
+usdt:$MMTK:mmtk_ruby:update_concurrent_set_entries_parallel_begin {
+    if (@enable_print) {
+        printf("update_concurrent_set_entries_parallel_begin,meta,%d,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, str(arg2, arg3));
+    }
+}
+
+usdt:$MMTK:mmtk_ruby:update_concurrent_set_entries_parallel_end {
+    if (@enable_print) {
+        printf("update_concurrent_set_entries_parallel_end,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
+    }
+}
+
+// END: weak cncurrent set
+
+// BEGIN: weak st table
+
 usdt:$MMTK:mmtk_ruby:initial_weak_table_stats {
     if (@enable_print) {
         printf("initial_weak_table_stats,meta,%d,%lu,%lu,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, arg2, arg3, str(arg4, arg5));
@@ -52,11 +82,13 @@ usdt:$MMTK:mmtk_ruby:update_table_bins_parallel {
     }
 }
 
-usdt:$MMTK:mmtk_ruby:update_generic_fields_tbl {
-    if (@enable_print) {
-        printf("update_generic_fields_tbl,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
-    }
-}
+// END: weak st table
+
+// usdt:$MMTK:mmtk_ruby:update_generic_fields_tbl {
+//     if (@enable_print) {
+//         printf("update_generic_fields_tbl,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
+//     }
+// }
 
 usdt:$MMTK:mmtk_ruby:process_obj_free_candidates {
     if (@enable_print) {

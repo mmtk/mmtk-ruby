@@ -52,6 +52,50 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                     "id2ref": { "before": id2ref_before, "after": id2ref_after, "diff": id2ref_after - id2ref_before },
                 }
 
+            case "initial_weak_concurrent_set_stats":
+                num_entries, capacity = [int(x) for x in args[0:2]]
+                set_name = args[2]
+                gc["args"].setdefault(set_name, {})
+                gc["args"][set_name] |= {
+                    "num_entries_before": num_entries,
+                    "capacity": capacity,
+                }
+
+            case "final_weak_concurrent_set_stats":
+                num_entries = int(args[0])
+                set_name = wp["args"]["set_name"]
+                gc["args"].setdefault(set_name, {})
+                gc["args"][set_name] |= {
+                    "num_entries_after": num_entries,
+                }
+                if "num_entries_before" in gc["args"][set_name]:
+                    before = gc["args"][set_name].pop("num_entries_before")
+                    after = gc["args"][set_name].pop("num_entries_after")
+                    gc["args"][set_name]["entries"] = {
+                        "before": before,
+                        "after": after,
+                        "diff": after - before,
+                    }
+
+            case "update_concurrent_set_entries_parallel_begin":
+                begin, end = [int(x) for x in args[0:2]]
+                set_name = args[-1]
+                num_entries = end - begin
+                wp["args"] |= {
+                    "begin": begin,
+                    "end": end,
+                    "num_entries": num_entries,
+                    "set_name": set_name,
+                }
+
+            case "update_concurrent_set_entries_parallel_end":
+                live, moved, deleted = [int(x) for x in args[0:3]]
+                wp["args"] |= {
+                    "live": live,
+                    "moved": moved,
+                    "deleted": deleted,
+                }
+
             case "initial_weak_table_stats":
                 entries_start, entries_bound, bins_num, num_entries = [int(x) for x in args[0:4]]
                 table_name = args[4]

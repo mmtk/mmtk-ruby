@@ -62,6 +62,7 @@ pub struct RubyBinding {
     pub wb_unprotected_objects: Mutex<HashSet<ObjectReference>>,
     pub st_entries_chunk_size: usize,
     pub st_bins_chunk_size: usize,
+    pub concurrent_set_chunk_size: usize,
 }
 
 unsafe impl Sync for RubyBinding {}
@@ -89,9 +90,12 @@ impl RubyBinding {
 
         let st_entries_chunk_size = env_default::<usize>("RUBY_MMTK_ENTRIES_CHUNK_SIZE", 1024);
         let st_bins_chunk_size = env_default::<usize>("RUBY_MMTK_BINS_CHUNK_SIZE", 4096);
+        let concurrent_set_chunk_size =
+            env_default::<usize>("RUBY_MMTK_CONCURRENT_SET_CHUNK_SIZE", 1024);
 
         debug!("st_entries_chunk_size: {st_entries_chunk_size}");
         debug!("st_bins_chunk_size: {st_bins_chunk_size}");
+        debug!("concurrent_set_chunk_size: {concurrent_set_chunk_size}");
 
         Self {
             mmtk,
@@ -105,6 +109,7 @@ impl RubyBinding {
             wb_unprotected_objects: Default::default(),
             st_entries_chunk_size,
             st_bins_chunk_size,
+            concurrent_set_chunk_size,
         }
     }
 

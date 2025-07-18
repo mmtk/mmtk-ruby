@@ -306,6 +306,14 @@ pub struct RubyBindingOptions {
 }
 
 #[repr(C)]
+#[derive(Clone, Default)]
+pub struct ConcurrentSetStats {
+    pub live: usize,
+    pub moved: usize,
+    pub deleted: usize,
+}
+
+#[repr(C)]
 #[derive(Clone)]
 pub struct RubyUpcalls {
     pub init_gc_worker_thread: extern "C" fn(gc_worker_tls: *mut GCThreadTLS),
@@ -353,8 +361,9 @@ pub struct RubyUpcalls {
     pub get_cc_refinement_table_size: extern "C" fn() -> usize,
     pub update_cc_refinement_table: extern "C" fn(),
     // Get tables for specialized processing
+    pub get_fstring_table_obj: extern "C" fn() -> ObjectReference,
     pub get_global_symbols_table: extern "C" fn() -> *mut st_table,
-    // Detailed table info queries and operations
+    // Detailed st_table info queries and operations
     pub st_get_num_entries: extern "C" fn(table: *const st_table) -> usize,
     pub st_get_size_info: extern "C" fn(
         table: *const st_table,
@@ -372,6 +381,15 @@ pub struct RubyUpcalls {
     ) -> usize,
     pub st_update_bins_range:
         extern "C" fn(table: *mut st_table, begin: libc::size_t, end: libc::size_t) -> usize,
+    // Detailed concurrent_set info queries and operations
+    pub concurrent_set_get_num_entries: extern "C" fn(set: ObjectReference) -> usize,
+    pub concurrent_set_get_capacity: extern "C" fn(set: ObjectReference) -> usize,
+    pub concurrent_set_update_entries_range: extern "C" fn(
+        set: ObjectReference,
+        begin: usize,
+        end: usize,
+        stats: *mut ConcurrentSetStats,
+    ),
 }
 
 unsafe impl Sync for RubyUpcalls {}

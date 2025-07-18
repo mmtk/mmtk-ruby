@@ -47,3 +47,4 @@ include = ["HiddenHeader"]
 "MIN_OBJ_ALIGN" = "MMTK_MIN_OBJ_ALIGN"
 "HiddenHeader" = "MMTk_HiddenHeader"
 "HIDDEN_SIZE_MASK" = "MMTK_HIDDEN_SIZE_MASK"
+"ConcurrentSetStats" = "MMTk_ConcurrentSetStats"
