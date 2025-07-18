@@ -1,3 +1,5 @@
+// PPPs
+
 usdt:$MMTK:mmtk_ruby:pin_ppp_children {
     if (@enable_print) {
         printf("pin_ppp_children,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
@@ -16,11 +18,15 @@ usdt:$MMTK:mmtk_ruby:unpin_ppp_children {
     }
 }
 
+// Generic weak table processing
+
 usdt:$MMTK:mmtk_ruby:weak_table_size_change {
     if (@enable_print) {
         printf("weak_table_size_change,meta,%d,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1);
     }
 }
+
+// Specific weak table processing work packets
 
 usdt:$MMTK:mmtk_ruby:update_finalizer_and_obj_id_tables {
     if (@enable_print) {
@@ -28,67 +34,59 @@ usdt:$MMTK:mmtk_ruby:update_finalizer_and_obj_id_tables {
     }
 }
 
-// BEGIN: weak concurrent set
+// Weak concurrent set optimization
 
-usdt:$MMTK:mmtk_ruby:initial_weak_concurrent_set_stats {
+usdt:$MMTK:mmtk_ruby:weak_cs_par_init {
     if (@enable_print) {
-        printf("initial_weak_concurrent_set_stats,meta,%d,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, str(arg2, arg3));
+        printf("weak_cs_par_init,meta,%d,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, str(arg2, arg3));
     }
 }
 
-usdt:$MMTK:mmtk_ruby:final_weak_concurrent_set_stats {
+usdt:$MMTK:mmtk_ruby:weak_cs_par_final {
     if (@enable_print) {
-        printf("final_weak_concurrent_set_stats,meta,%d,%lu,%lu\n", tid, nsecs, arg0);
+        printf("weak_cs_par_final,meta,%d,%lu,%lu\n", tid, nsecs, arg0);
     }
 }
 
-usdt:$MMTK:mmtk_ruby:update_concurrent_set_entries_parallel_begin {
+usdt:$MMTK:mmtk_ruby:weak_cs_par_entries_begin {
     if (@enable_print) {
-        printf("update_concurrent_set_entries_parallel_begin,meta,%d,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, str(arg2, arg3));
+        printf("weak_cs_par_entries_begin,meta,%d,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, str(arg2, arg3));
     }
 }
 
-usdt:$MMTK:mmtk_ruby:update_concurrent_set_entries_parallel_end {
+usdt:$MMTK:mmtk_ruby:weak_cs_par_entries_end {
     if (@enable_print) {
-        printf("update_concurrent_set_entries_parallel_end,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
+        printf("weak_cs_par_entries_end,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
     }
 }
 
-// END: weak cncurrent set
+// Weak st table optimization
 
-// BEGIN: weak st table
-
-usdt:$MMTK:mmtk_ruby:initial_weak_table_stats {
+usdt:$MMTK:mmtk_ruby:weak_st_par_init {
     if (@enable_print) {
-        printf("initial_weak_table_stats,meta,%d,%lu,%lu,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, arg2, arg3, str(arg4, arg5));
+        printf("weak_st_par_init,meta,%d,%lu,%lu,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, arg2, arg3, str(arg4, arg5));
     }
 }
 
-usdt:$MMTK:mmtk_ruby:final_weak_table_stats {
+usdt:$MMTK:mmtk_ruby:weak_st_par_final {
     if (@enable_print) {
-        printf("final_weak_table_stats,meta,%d,%lu,%lu,%s\n", tid, nsecs, arg0, str(arg1, arg2));
+        printf("weak_st_par_final,meta,%d,%lu,%lu,%s\n", tid, nsecs, arg0, str(arg1, arg2));
     }
 }
 
-usdt:$MMTK:mmtk_ruby:update_table_entries_parallel {
+usdt:$MMTK:mmtk_ruby:weak_st_par_entries {
     if (@enable_print) {
-        printf("update_table_entries_parallel,meta,%d,%lu,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, arg2, str(arg3, arg4));
+        printf("weak_st_par_entries,meta,%d,%lu,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, arg2, str(arg3, arg4));
     }
 }
 
-usdt:$MMTK:mmtk_ruby:update_table_bins_parallel {
+usdt:$MMTK:mmtk_ruby:weak_st_par_bins {
     if (@enable_print) {
-        printf("update_table_bins_parallel,meta,%d,%lu,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, arg2, str(arg3, arg4));
+        printf("weak_st_par_bins,meta,%d,%lu,%lu,%lu,%lu,%s\n", tid, nsecs, arg0, arg1, arg2, str(arg3, arg4));
     }
 }
 
-// END: weak st table
-
-// usdt:$MMTK:mmtk_ruby:update_generic_fields_tbl {
-//     if (@enable_print) {
-//         printf("update_generic_fields_tbl,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
-//     }
-// }
+// Other work packets
 
 usdt:$MMTK:mmtk_ruby:process_obj_free_candidates {
     if (@enable_print) {

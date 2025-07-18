@@ -3,6 +3,8 @@
 def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
     if wp is not None:
         match name:
+            # PPPs
+
             case "pin_ppp_children":
                 num_ppps, num_no_longer_ppps, num_pinned_children = [int(x) for x in args]
                 num_still_ppps = num_ppps - num_no_longer_ppps
@@ -34,6 +36,8 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                     "num_ppp_children": num_children,
                 }
 
+            # Generic weak table processing
+
             case "weak_table_size_change":
                 before, after = [int(x) for x in args]
                 wp["args"] |= {
@@ -44,6 +48,8 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                     },
                 }
 
+            # Specific weak table processing work packets
+
             case "update_finalizer_and_obj_id_tables":
                 (finalizer_before, finalizer_after,
                  id2ref_before, id2ref_after) = [int(x) for x in args]
@@ -52,7 +58,9 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                     "id2ref": { "before": id2ref_before, "after": id2ref_after, "diff": id2ref_after - id2ref_before },
                 }
 
-            case "initial_weak_concurrent_set_stats":
+            # Weak concurrent set optimization
+
+            case "weak_cs_par_init":
                 num_entries, capacity = [int(x) for x in args[0:2]]
                 set_name = args[2]
                 gc["args"].setdefault(set_name, {})
@@ -61,7 +69,7 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                     "capacity": capacity,
                 }
 
-            case "final_weak_concurrent_set_stats":
+            case "weak_cs_par_final":
                 num_entries = int(args[0])
                 set_name = wp["args"]["set_name"]
                 gc["args"].setdefault(set_name, {})
@@ -77,7 +85,7 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                         "diff": after - before,
                     }
 
-            case "update_concurrent_set_entries_parallel_begin":
+            case "weak_cs_par_entries_begin":
                 begin, end = [int(x) for x in args[0:2]]
                 set_name = args[-1]
                 num_entries = end - begin
@@ -88,7 +96,7 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                     "set_name": set_name,
                 }
 
-            case "update_concurrent_set_entries_parallel_end":
+            case "weak_cs_par_entries_end":
                 live, moved, deleted = [int(x) for x in args[0:3]]
                 wp["args"] |= {
                     "live": live,
@@ -96,7 +104,9 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                     "deleted": deleted,
                 }
 
-            case "initial_weak_table_stats":
+            # Weak st table optimization
+
+            case "weak_st_par_init":
                 entries_start, entries_bound, bins_num, num_entries = [int(x) for x in args[0:4]]
                 table_name = args[4]
                 gc["args"].setdefault(table_name, {})
@@ -107,7 +117,7 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                     "num_entries_before": num_entries,
                 }
 
-            case "final_weak_table_stats":
+            case "weak_st_par_final":
                 num_entries = int(args[0])
                 table_name = args[1]
                 gc["args"].setdefault(table_name, {})
@@ -123,7 +133,7 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                         "diff": after - before,
                     }
 
-            case "update_table_entries_parallel":
+            case "weak_st_par_entries":
                 begin, end, deleted_entries = [int(x) for x in args[0:3]]
                 table_name = args[3]
                 num_entries = end - begin
@@ -135,7 +145,7 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                     "table_name": table_name,
                 }
 
-            case "update_table_bins_parallel":
+            case "weak_st_par_bins":
                 begin, end, deleted_bins = [int(x) for x in args[0:3]]
                 table_name = args[3]
                 num_bins = end - begin
@@ -147,16 +157,7 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                     "table_name": table_name,
                 }
 
-            case "update_generic_fields_tbl":
-                entries_moved, old_entries, new_entries = [int(x) for x in args[0:3]]
-                wp["args"] |= {
-                    "entries_moved": entries_moved,
-                    "entries": {
-                        "before": old_entries,
-                        "after": new_entries,
-                        "diff": new_entries - old_entries,
-                    },
-                }
+            # Other work packets
 
             case "process_obj_free_candidates":
                 old_candidates, new_candidates = [int(x) for x in args[0:2]]

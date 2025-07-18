@@ -1,7 +1,4 @@
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc, Mutex,
-};
+use std::sync::Mutex;
 
 use mmtk::{
     scheduler::{GCWork, GCWorker, WorkBucketStage},
@@ -9,12 +6,10 @@ use mmtk::{
     vm::ObjectTracerContext,
 };
 
-use crate::{
-    abi::{st_table, ConcurrentSetStats, GCThreadTLS},
-    extra_assert, is_mmtk_object_safe, upcalls,
-    utils::AfterAll,
-    Ruby,
-};
+use crate::{abi::GCThreadTLS, extra_assert, is_mmtk_object_safe, upcalls, Ruby};
+
+pub mod concurrent_set_parallel;
+pub mod st_table_parallel;
 
 /// Set this to true to use chunked processing optimization for the fstring table.
 const SPECIALIZE_FSTRING_TABLE_PROCESSING: bool = true;
@@ -88,7 +83,7 @@ impl WeakProcessor {
         let forward = crate::mmtk().get_plan().current_gc_may_move_object();
 
         if SPECIALIZE_FSTRING_TABLE_PROCESSING {
-            Self::process_weak_concurrent_set_chunked(
+            concurrent_set_parallel::process_weak_concurrent_set_chunked(
                 "fstring",
                 (upcalls().get_fstring_table_obj)(),
                 worker,
@@ -99,7 +94,7 @@ impl WeakProcessor {
         }
 
         if SPECIALIZE_GLOBAL_SYMBOLS_TABLE_PROCESSING {
-            Self::process_weak_table_chunked(
+            st_table_parallel::process_weak_table_chunked(
                 "global symbols",
                 (upcalls().get_global_symbols_table)(),
                 false,
@@ -111,122 +106,6 @@ impl WeakProcessor {
             worker.scheduler().work_buckets[WorkBucketStage::VMRefClosure]
                 .add_boxed(Box::new(UpdateGlobalSymbolsTable) as _);
         }
-    }
-
-    pub fn process_weak_concurrent_set_chunked(
-        name: &'static str,
-        set: ObjectReference,
-        worker: &mut GCWorker<Ruby>,
-    ) {
-        let num_entries = (upcalls().concurrent_set_get_num_entries)(set);
-        let capacity = (upcalls().concurrent_set_get_capacity)(set);
-        debug!("name: {name}, num_entries: {num_entries}, capacity: {capacity}");
-
-        let set_name_ptr = name.as_ptr();
-        let set_name_len = name.len();
-
-        probe!(
-            mmtk_ruby,
-            initial_weak_concurrent_set_stats,
-            num_entries,
-            capacity,
-            set_name_ptr,
-            set_name_len,
-        );
-
-        let chunk_size = crate::binding().concurrent_set_chunk_size;
-
-        let counter = Arc::new(AtomicUsize::new(0));
-
-        let entries_packets = (0..capacity)
-            .step_by(chunk_size)
-            .map(|begin| {
-                let end = (begin + chunk_size).min(capacity);
-                Box::new(UpdateConcurrentSetEntriesParallel {
-                    name,
-                    set,
-                    begin,
-                    end,
-                    counter: counter.clone(),
-                }) as _
-            })
-            .collect::<Vec<_>>();
-
-        counter.fetch_add(entries_packets.len(), Ordering::SeqCst);
-
-        worker.scheduler().work_buckets[WorkBucketStage::VMRefClosure].bulk_add(entries_packets);
-    }
-
-    pub fn process_weak_table_chunked(
-        name: &'static str,
-        table: *mut st_table,
-        weak_keys: bool,
-        weak_values: bool,
-        forward: bool,
-        worker: &mut GCWorker<Ruby>,
-    ) {
-        let mut entries_start = 0;
-        let mut entries_bound = 0;
-        let mut bins_num = 0;
-        (upcalls().st_get_size_info)(table, &mut entries_start, &mut entries_bound, &mut bins_num);
-        let num_entries = (upcalls().st_get_num_entries)(table);
-        debug!(
-            "name: {name}, entries_start: {entries_start}, entries_bound: {entries_bound}, bins_num: {bins_num}, num_entries: {num_entries}"
-        );
-
-        let table_name_ptr = name.as_ptr();
-        let table_name_len = name.len();
-
-        probe!(
-            mmtk_ruby,
-            initial_weak_table_stats,
-            entries_start,
-            entries_bound,
-            bins_num,
-            num_entries,
-            table_name_ptr,
-            table_name_len,
-        );
-
-        let entries_chunk_size = crate::binding().st_entries_chunk_size;
-        let bins_chunk_size = crate::binding().st_bins_chunk_size;
-
-        let after_all = Arc::new(AfterAll::new(WorkBucketStage::VMRefClosure));
-
-        let entries_packets = (entries_start..entries_bound)
-            .step_by(entries_chunk_size)
-            .map(|begin| {
-                let end = (begin + entries_chunk_size).min(entries_bound);
-                let after_all = after_all.clone();
-                Box::new(UpdateTableEntriesParallel {
-                    name,
-                    table,
-                    begin,
-                    end,
-                    weak_keys,
-                    weak_values,
-                    forward,
-                    after_all,
-                }) as _
-            })
-            .collect::<Vec<_>>();
-        after_all.count_up(entries_packets.len());
-
-        let bins_packets = (0..bins_num)
-            .step_by(entries_chunk_size)
-            .map(|begin| {
-                let end = (begin + bins_chunk_size).min(bins_num);
-                Box::new(UpdateTableBinsParallel {
-                    name: name.to_string(),
-                    table,
-                    begin,
-                    end,
-                }) as _
-            })
-            .collect::<Vec<_>>();
-        after_all.add_packets(bins_packets);
-
-        worker.scheduler().work_buckets[WorkBucketStage::VMRefClosure].bulk_add(entries_packets);
     }
 }
 
@@ -380,137 +259,6 @@ define_global_table_processor!(UpdateCCRefinementTable, {
 });
 
 ///////// END: Simple table updating work packets ////////
-
-struct UpdateConcurrentSetEntriesParallel {
-    name: &'static str,
-    set: ObjectReference,
-    begin: usize,
-    end: usize,
-    counter: Arc<AtomicUsize>,
-}
-
-unsafe impl Send for UpdateConcurrentSetEntriesParallel {}
-
-impl GCWork<Ruby> for UpdateConcurrentSetEntriesParallel {
-    fn do_work(&mut self, _worker: &mut GCWorker<Ruby>, _mmtk: &'static mmtk::MMTK<Ruby>) {
-        debug!(
-            "Updating concurrent set '{}' range {}-{}",
-            self.name, self.begin, self.end
-        );
-        let set_name = self.name.as_ptr();
-        let set_name_len = self.name.len();
-        probe!(
-            mmtk_ruby,
-            update_concurrent_set_entries_parallel_begin,
-            self.begin,
-            self.end,
-            set_name,
-            set_name_len
-        );
-        let mut stats = ConcurrentSetStats::default();
-        (upcalls().concurrent_set_update_entries_range)(self.set, self.begin, self.end, &mut stats);
-        debug!(
-            "Done updating entries of concurrent set '{}' range {}-{}, live: {}, moved: {}, deleted: {}",
-            self.name, self.begin, self.end, stats.live, stats.moved, stats.deleted
-        );
-        probe!(
-            mmtk_ruby,
-            update_concurrent_set_entries_parallel_end,
-            stats.live,
-            stats.moved,
-            stats.deleted,
-        );
-
-        let old_counter = self.counter.fetch_sub(1, Ordering::SeqCst);
-        if old_counter == 1 {
-            let num_entries = (upcalls().concurrent_set_get_num_entries)(self.set);
-            probe!(mmtk_ruby, final_weak_concurrent_set_stats, num_entries)
-        }
-    }
-}
-
-struct UpdateTableEntriesParallel {
-    name: &'static str,
-    table: *mut st_table,
-    begin: usize,
-    end: usize,
-    weak_keys: bool,
-    weak_values: bool,
-    forward: bool,
-    after_all: Arc<AfterAll>,
-}
-
-unsafe impl Send for UpdateTableEntriesParallel {}
-
-impl UpdateTableEntriesParallel {}
-
-impl GCWork<Ruby> for UpdateTableEntriesParallel {
-    fn do_work(&mut self, worker: &mut GCWorker<Ruby>, _mmtk: &'static mmtk::MMTK<Ruby>) {
-        debug!("Updating entries of {} table", self.name);
-        let deleted_entries = (upcalls().st_update_entries_range)(
-            self.table,
-            self.begin,
-            self.end,
-            self.weak_keys,
-            self.weak_values,
-            self.forward,
-        );
-        debug!("Done updating entries of {} table", self.name);
-        let table_name = self.name.as_ptr();
-        let table_name_len = self.name.len();
-        probe!(
-            mmtk_ruby,
-            update_table_entries_parallel,
-            self.begin,
-            self.end,
-            deleted_entries,
-            table_name,
-            table_name_len
-        );
-
-        let is_last = self.after_all.count_down(worker);
-        if is_last {
-            let num_entries = (upcalls().st_get_num_entries)(self.table);
-            probe!(
-                mmtk_ruby,
-                final_weak_table_stats,
-                num_entries,
-                table_name,
-                table_name_len
-            )
-        }
-    }
-}
-
-struct UpdateTableBinsParallel {
-    name: String,
-    table: *mut st_table,
-    begin: usize,
-    end: usize,
-}
-
-unsafe impl Send for UpdateTableBinsParallel {}
-
-impl UpdateTableBinsParallel {}
-
-impl GCWork<Ruby> for UpdateTableBinsParallel {
-    fn do_work(&mut self, _worker: &mut GCWorker<Ruby>, _mmtk: &'static mmtk::MMTK<Ruby>) {
-        debug!("Updating bins of {} table", self.name);
-        let deleted_bins = (upcalls().st_update_bins_range)(self.table, self.begin, self.end);
-        debug!("Done updating bins of {} table", self.name);
-        let table_name = self.name.as_ptr();
-        let table_name_len = self.name.len();
-        probe!(
-            mmtk_ruby,
-            update_table_bins_parallel,
-            self.begin,
-            self.end,
-            deleted_bins,
-            table_name,
-            table_name_len
-        );
-    }
-}
 
 struct UpdateWbUnprotectedObjectsList;
 
