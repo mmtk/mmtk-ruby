@@ -408,3 +408,16 @@ pub unsafe extern "C" fn mmtk_hidden_header_is_sane(hidden_header: *const Hidden
     let hidden_header = unsafe { &*hidden_header };
     hidden_header.is_sane()
 }
+
+#[no_mangle]
+pub extern "C" fn mmtk_current_gc_may_move_object() -> bool {
+    crate::mmtk().get_plan().current_gc_may_move_object()
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_current_gc_is_nursery() -> bool {
+    crate::mmtk()
+        .get_plan()
+        .generational()
+        .is_some_and(|gen| gen.is_current_gc_nursery())
+}

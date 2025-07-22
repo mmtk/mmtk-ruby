@@ -31,6 +31,7 @@ pub mod reference_glue;
 pub mod scanning;
 pub mod utils;
 pub mod weak_proc;
+pub mod yjit_support;
 
 #[derive(Default)]
 pub struct Ruby;

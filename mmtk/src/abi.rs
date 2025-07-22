@@ -390,6 +390,9 @@ pub struct RubyUpcalls {
         end: usize,
         stats: *mut ConcurrentSetStats,
     ),
+    // Memory protection for code memory
+    pub before_updating_jit_code: extern "C" fn(),
+    pub after_updating_jit_code: extern "C" fn(),
 }
 
 unsafe impl Sync for RubyUpcalls {}

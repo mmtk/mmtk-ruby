@@ -26,6 +26,7 @@ impl Collection<Ruby> for VMCollection {
             Self::notify_mutator_ready::<F>,
             &mut mutator_visitor as *mut F as *mut _,
         );
+        crate::yjit_support::schedule_jit_code_protection_work_packets(tls);
     }
 
     fn resume_mutators(tls: VMWorkerThread) {
