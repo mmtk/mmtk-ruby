@@ -1,6 +1,7 @@
 use crate::api::RubyMutator;
 use crate::{extra_assert, upcalls, Ruby};
 use mmtk::scheduler::GCWorker;
+use mmtk::util::api_util::NullableObjectReference;
 use mmtk::util::{Address, ObjectReference, VMMutatorThread, VMWorkerThread};
 
 // For the C binding
@@ -10,6 +11,9 @@ pub const MIN_OBJ_ALIGN: usize = 8; // Even on 32-bit machine.  A Ruby object is
 pub const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
 pub const HIDDEN_SIZE_MASK: usize = 0x0000FFFFFFFFFFFF;
+
+pub const MMTK_WEAK_CONCURRENT_SET_KIND_FSTRING: u8 = 0;
+pub const MMTK_WEAK_CONCURRENT_SET_KIND_GLOBAL_SYMBOLS: u8 = 1;
 
 // An opaque type for the C counterpart.
 #[allow(non_camel_case_types)]
@@ -361,8 +365,8 @@ pub struct RubyUpcalls {
     pub get_cc_refinement_table_size: extern "C" fn() -> usize,
     pub update_cc_refinement_table: extern "C" fn(),
     // Get tables for specialized processing
-    pub get_fstring_table_obj: extern "C" fn() -> ObjectReference,
-    pub get_global_symbols_table: extern "C" fn() -> *mut st_table,
+    pub get_fstring_table_obj: extern "C" fn() -> NullableObjectReference,
+    pub get_global_symbols_table_obj: extern "C" fn() -> NullableObjectReference,
     // Detailed st_table info queries and operations
     pub st_get_num_entries: extern "C" fn(table: *const st_table) -> usize,
     pub st_get_size_info: extern "C" fn(
@@ -388,6 +392,7 @@ pub struct RubyUpcalls {
         set: ObjectReference,
         begin: usize,
         end: usize,
+        kind: u8,
         stats: *mut ConcurrentSetStats,
     ),
     // Memory protection for code memory

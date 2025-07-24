@@ -8,13 +8,19 @@ use mmtk::{
     util::ObjectReference,
 };
 
-use crate::{abi::ConcurrentSetStats, upcalls, Ruby};
+use crate::{abi::ConcurrentSetStats, upcalls, weak_proc::WeakConcurrentSetKind, Ruby};
 
 pub fn process_weak_concurrent_set_chunked(
     name: &'static str,
-    set: ObjectReference,
+    set: Option<ObjectReference>,
+    kind: WeakConcurrentSetKind,
     worker: &mut GCWorker<Ruby>,
 ) {
+    let Some(set) = set else {
+        debug!("Set {name} is empty.  Skipping.");
+        return;
+    };
+
     let num_entries = (upcalls().concurrent_set_get_num_entries)(set);
     let capacity = (upcalls().concurrent_set_get_capacity)(set);
     debug!("name: {name}, num_entries: {num_entries}, capacity: {capacity}");
@@ -44,6 +50,7 @@ pub fn process_weak_concurrent_set_chunked(
                 set,
                 begin,
                 end,
+                kind: kind as u8,
                 counter: counter.clone(),
             }) as _
         })
@@ -59,6 +66,7 @@ struct UpdateConcurrentSetEntriesParallel {
     set: ObjectReference,
     begin: usize,
     end: usize,
+    kind: u8,
     counter: Arc<AtomicUsize>,
 }
 
@@ -82,7 +90,9 @@ impl GCWork<Ruby> for UpdateConcurrentSetEntriesParallel {
         );
 
         let mut stats = ConcurrentSetStats::default();
-        (upcalls().concurrent_set_update_entries_range)(self.set, self.begin, self.end, &mut stats);
+        (upcalls().concurrent_set_update_entries_range)(
+            self.set, self.begin, self.end, self.kind, &mut stats,
+        );
 
         debug!(
             "Done updating entries of concurrent set '{}' range {}-{}, live: {}, moved: {}, deleted: {}",

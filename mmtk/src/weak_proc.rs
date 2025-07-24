@@ -6,7 +6,10 @@ use mmtk::{
     vm::ObjectTracerContext,
 };
 
-use crate::{abi::GCThreadTLS, extra_assert, is_mmtk_object_safe, upcalls, Ruby};
+use crate::{
+    abi::{self, GCThreadTLS},
+    extra_assert, is_mmtk_object_safe, upcalls, Ruby,
+};
 
 pub mod concurrent_set_parallel;
 pub mod st_table_parallel;
@@ -16,6 +19,13 @@ const SPECIALIZE_FSTRING_TABLE_PROCESSING: bool = true;
 
 /// Set this to true to use chunked processing optimization for the global symbols table.
 const SPECIALIZE_GLOBAL_SYMBOLS_TABLE_PROCESSING: bool = true;
+
+#[repr(u8)]
+#[derive(Clone, Copy)]
+pub enum WeakConcurrentSetKind {
+    FString = abi::MMTK_WEAK_CONCURRENT_SET_KIND_FSTRING,
+    GlobalSymbols = abi::MMTK_WEAK_CONCURRENT_SET_KIND_GLOBAL_SYMBOLS,
+}
 
 pub struct WeakProcessor {
     /// Objects that needs `obj_free` called when dying.
@@ -80,12 +90,11 @@ impl WeakProcessor {
             Box::new(UpdateWbUnprotectedObjectsList) as _,
         ]);
 
-        let forward = crate::mmtk().get_plan().current_gc_may_move_object();
-
         if SPECIALIZE_FSTRING_TABLE_PROCESSING {
             concurrent_set_parallel::process_weak_concurrent_set_chunked(
                 "fstring",
-                (upcalls().get_fstring_table_obj)(),
+                (upcalls().get_fstring_table_obj)().into(),
+                WeakConcurrentSetKind::FString,
                 worker,
             );
         } else {
@@ -94,12 +103,10 @@ impl WeakProcessor {
         }
 
         if SPECIALIZE_GLOBAL_SYMBOLS_TABLE_PROCESSING {
-            st_table_parallel::process_weak_table_chunked(
+            concurrent_set_parallel::process_weak_concurrent_set_chunked(
                 "global symbols",
-                (upcalls().get_global_symbols_table)(),
-                false,
-                true,
-                forward,
+                (upcalls().get_global_symbols_table_obj)().into(),
+                WeakConcurrentSetKind::GlobalSymbols,
                 worker,
             );
         } else {
