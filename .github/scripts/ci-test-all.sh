@@ -13,7 +13,7 @@ case $DEBUG_LEVEL in
         ;;
     release)
         make test-all \
-             RUN_OPTS="--mmtk-plan=$CHOSEN_PLAN" \
+             RUN_OPTS="--mmtk-plan=$CHOSEN_PLAN ${YJIT_OPTS}" \
              TESTOPTS="-v --excludes-dir=../test/.excludes-mmtk -j${CI_JOBS}"
         ;;
     vanilla)

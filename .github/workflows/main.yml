@@ -33,13 +33,24 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
+        special: ["normal"]
         debug-level: ["debug", "release"]
         plan: ["MarkSweep", "Immix", "StickyImmix"]
         include:
-          - debug-level: vanilla
+          - special: "special"
+            debug-level: "vanilla"
+          - special: "special"
+            debug-level: "debug"
+            plan: "StickyImmix"
+            yjit: "yjit"
+          - special: "special"
+            debug-level: "release"
+            plan: "StickyImmix"
+            yjit: "yjit"
     env:
       DEBUG_LEVEL: ${{ matrix.debug-level }}
       CHOSEN_PLAN: ${{ matrix.plan }}
+      USE_YJIT: ${{ matrix.yjit }}
     steps:
       - name: Checkout MMTk Ruby binding
         uses: actions/checkout@v4

@@ -10,3 +10,8 @@ CI_JOBS=4
 if test -z "$CHOSEN_PLAN"; then
     CHOSEN_PLAN=$DEFAULT_PLAN
 fi
+
+YJIT_OPTS=" "
+if test "$USE_YJIT" == "yes"; then
+    YJIT_OPTS=" --yjit"
+fi

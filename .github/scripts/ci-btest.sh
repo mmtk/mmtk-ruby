@@ -8,7 +8,7 @@ cd $RUBY_BUILD_PATH
 
 echo "============ Bootstrape tests (btest) ($DEBUG_LEVEL) ============="
 if test "$DEBUG_LEVEL" == "vanilla"; then
-    make btest TESTOPTS="-v -j${CI_JOBS}"
+    make btest TESTOPTS="-v -j${CI_JOBS} ${YJIT_OPTS}"
 else
     # Some test cases take too much time to run in debug mode, resulting in timeout. It is
     # because the default GC trigger (dynamic heap size) does not scale the heap size fast
@@ -26,5 +26,5 @@ else
     test_and_delete thread 400m
 
     # Run other btests in the regular way.
-    make btest RUN_OPTS="--mmtk-plan=$CHOSEN_PLAN" TESTOPTS="-v -j${CI_JOBS}"
+    make btest RUN_OPTS="--mmtk-plan=$CHOSEN_PLAN" TESTOPTS="-v -j${CI_JOBS} ${YJIT_OPTS}"
 fi
