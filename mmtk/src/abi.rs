@@ -15,6 +15,27 @@ pub const HIDDEN_SIZE_MASK: usize = 0x0000FFFFFFFFFFFF;
 pub const MMTK_WEAK_CONCURRENT_SET_KIND_FSTRING: u8 = 0;
 pub const MMTK_WEAK_CONCURRENT_SET_KIND_GLOBAL_SYMBOLS: u8 = 1;
 
+pub(crate) const RUBY_IMMEDIATE_MASK: usize = 0x07;
+
+#[allow(non_upper_case_globals)] // Match Ruby definition
+pub(crate) const Qundef: VALUE = VALUE(0x24);
+
+#[repr(transparent)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct VALUE(pub usize);
+
+impl VALUE {
+    pub fn is_special_const(&self) -> bool {
+        self.0 == 0 || self.0 & RUBY_IMMEDIATE_MASK != 0
+    }
+}
+
+impl From<ObjectReference> for VALUE {
+    fn from(value: ObjectReference) -> Self {
+        Self(value.to_raw_address().as_usize())
+    }
+}
+
 // An opaque type for the C counterpart.
 #[allow(non_camel_case_types)]
 pub struct st_table;

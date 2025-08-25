@@ -8,8 +8,9 @@ tab_width = 4
 
 usize_is_size_t = true
 
-after_includes = """
+includes = ["ruby/internal/value.h"]
 
+after_includes = """
 typedef struct MMTk_Builder MMTk_Builder;
 typedef struct MMTk_Mutator MMTk_Mutator;
 
@@ -26,6 +27,7 @@ typedef uint32_t MMTk_AllocationSemantics;
 
 [export]
 include = ["HiddenHeader"]
+exclude = ["VALUE"]
 
 [export.rename]
 "MMTKBuilder" = "MMTk_Builder"

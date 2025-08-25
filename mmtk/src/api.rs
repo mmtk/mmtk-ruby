@@ -9,6 +9,7 @@ use crate::abi;
 use crate::abi::HiddenHeader;
 use crate::abi::RawVecOfObjRef;
 use crate::abi::RubyBindingOptions;
+use crate::abi::VALUE;
 use crate::binding;
 use crate::binding::RubyBinding;
 use crate::mmtk;
@@ -420,4 +421,9 @@ pub extern "C" fn mmtk_current_gc_is_nursery() -> bool {
         .get_plan()
         .generational()
         .is_some_and(|gen| gen.is_current_gc_nursery())
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_discover_weak_field(field: *mut VALUE) {
+    crate::binding().weak_proc.discover_weak_field(field)
 }

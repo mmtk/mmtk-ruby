@@ -2,12 +2,12 @@ use std::sync::Mutex;
 
 use mmtk::{
     scheduler::{GCWork, GCWorker, WorkBucketStage},
-    util::ObjectReference,
+    util::{Address, ObjectReference},
     vm::ObjectTracerContext,
 };
 
 use crate::{
-    abi::{self, GCThreadTLS},
+    abi::{self, GCThreadTLS, Qundef, VALUE},
     extra_assert, is_mmtk_object_safe, upcalls, Ruby,
 };
 
@@ -27,11 +27,15 @@ pub enum WeakConcurrentSetKind {
     GlobalSymbols = abi::MMTK_WEAK_CONCURRENT_SET_KIND_GLOBAL_SYMBOLS,
 }
 
+pub type FieldType = *mut VALUE;
+
 pub struct WeakProcessor {
     /// Objects that needs `obj_free` called when dying.
     /// If it is a bottleneck, replace it with a lock-free data structure,
     /// or add candidates in batch.
     obj_free_candidates: Mutex<Vec<ObjectReference>>,
+    /// Weak fields discovered during the current GC.
+    weak_fields: Mutex<Vec<FieldType>>,
 }
 
 impl Default for WeakProcessor {
@@ -44,6 +48,7 @@ impl WeakProcessor {
     pub fn new() -> Self {
         Self {
             obj_free_candidates: Mutex::new(Vec::new()),
+            weak_fields: Default::default(),
         }
     }
 
@@ -70,6 +75,28 @@ impl WeakProcessor {
         std::mem::take(obj_free_candidates.as_mut())
     }
 
+    pub fn clear_weak_fields(&self) {
+        let mut weak_fields = self
+            .weak_fields
+            .try_lock()
+            .expect("Should not have contention.");
+        weak_fields.clear();
+    }
+
+    pub fn discover_weak_field(&self, field: FieldType) {
+        let mut weak_fields = self.weak_fields.lock().unwrap();
+        weak_fields.push(field);
+        trace!("Pushed weak field {field:?}");
+    }
+
+    pub fn get_all_weak_fields(&self) -> Vec<FieldType> {
+        let mut weak_fields = self
+            .weak_fields
+            .try_lock()
+            .expect("Should not have contention.");
+        std::mem::take(&mut weak_fields)
+    }
+
     pub fn process_weak_stuff(
         &self,
         worker: &mut GCWorker<Ruby>,
@@ -88,6 +115,7 @@ impl WeakProcessor {
             Box::new(UpdateCCRefinementTable) as _,
             // END: Weak tables
             Box::new(UpdateWbUnprotectedObjectsList) as _,
+            Box::new(UpdateWeakFields) as _,
         ]);
 
         if SPECIALIZE_FSTRING_TABLE_PROCESSING {
@@ -315,5 +343,51 @@ trait Forwardable {
 impl Forwardable for ObjectReference {
     fn forward(&self) -> Self {
         self.get_forwarded_object().unwrap_or(*self)
+    }
+}
+
+struct UpdateWeakFields;
+
+impl GCWork<Ruby> for UpdateWeakFields {
+    fn do_work(&mut self, _worker: &mut GCWorker<Ruby>, _mmtk: &'static mmtk::MMTK<Ruby>) {
+        let weak_fields = crate::binding().weak_proc.get_all_weak_fields();
+
+        let num_fields = weak_fields.len();
+        let mut live = 0usize;
+        let mut forwarded = 0usize;
+
+        debug!("Updating {num_fields} weak fields...");
+
+        for field in weak_fields {
+            let old_value = unsafe { *field };
+            trace!("  Visiting weak field {field:?} -> {old_value:?}");
+
+            if old_value.is_special_const() {
+                continue;
+            }
+
+            let addr = unsafe { Address::from_usize(old_value.0) };
+            if !addr.is_mapped() {
+                panic!("Field {field:?} value {addr} points to unmapped area");
+            }
+            let Some(old_objref) = mmtk::memory_manager::is_mmtk_object(addr) else {
+                panic!("Field {field:?} value {addr} is an invalid object reference");
+            };
+
+            if old_objref.is_reachable() {
+                live += 1;
+                if let Some(new_objref) = old_objref.get_forwarded_object() {
+                    forwarded += 1;
+                    let new_value = VALUE::from(new_objref);
+                    trace!("    Updated weak field {field:?} to {new_value:?}");
+                    unsafe { *field = new_value };
+                }
+            } else {
+                unsafe { *field = Qundef };
+            }
+        }
+
+        debug!("Updated {num_fields} weak fields.  {live} live, {forwarded} forwarded.");
+        probe!(mmtk_ruby, update_weak_fields, num_fields, live, forwarded);
     }
 }
