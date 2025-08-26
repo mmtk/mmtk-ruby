@@ -99,3 +99,9 @@ usdt:$MMTK:mmtk_ruby:update_wb_unprotected_objects_list {
         printf("update_wb_unprotected_objects_list,meta,%d,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1);
     }
 }
+
+usdt:$MMTK:mmtk_ruby:update_weak_fields {
+    if (@enable_print) {
+        printf("update_weak_fields,meta,%d,%lu,%lu,%lu,%lu\n", tid, nsecs, arg0, arg1, arg2);
+    }
+}

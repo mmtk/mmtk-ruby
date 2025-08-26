@@ -71,6 +71,8 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
 
             case "weak_cs_par_final":
                 num_entries = int(args[0])
+                if "set_name" not in wp["args"]:
+                    return
                 set_name = wp["args"]["set_name"]
                 gc["args"].setdefault(set_name, {})
                 gc["args"][set_name] |= {
@@ -176,5 +178,16 @@ def enrich_meta_extra(log_processor, name, tid, ts, gc, wp, args):
                         "before": before,
                         "after": after,
                         "diff": after - before,
+                    },
+                }
+
+            case "update_weak_fields":
+                num_fields, live, forwarded = [int(x) for x in args[0:3]]
+                wp["args"] |= {
+                    "wb_unprotected_objects": {
+                        "num_fields": num_fields,
+                        "live": live,
+                        "forwarded": forwarded,
+                        "cleared": num_fields - live,
                     },
                 }
