@@ -491,7 +491,7 @@ dependencies = [
 [[package]]
 name = "mmtk"
 version = "0.31.0"
-source = "git+https://github.com/mmtk/mmtk-core.git?rev=2ad6d36ab3d82be46135a7d76d4fe59cc84620ed#2ad6d36ab3d82be46135a7d76d4fe59cc84620ed"
+source = "git+https://github.com/mmtk/mmtk-core.git?rev=e30d0a0866fe66d352eb09eb7f9e9466dc649172#e30d0a0866fe66d352eb09eb7f9e9466dc649172"
 dependencies = [
  "atomic",
  "atomic-traits",
@@ -505,7 +505,6 @@ dependencies = [
  "downcast-rs",
  "enum-map",
  "env_logger",
- "idna_adapter",
  "is-terminal",
  "itertools",
  "lazy_static",
@@ -530,7 +529,7 @@ dependencies = [
 [[package]]
 name = "mmtk-macros"
 version = "0.31.0"
-source = "git+https://github.com/mmtk/mmtk-core.git?rev=2ad6d36ab3d82be46135a7d76d4fe59cc84620ed#2ad6d36ab3d82be46135a7d76d4fe59cc84620ed"
+source = "git+https://github.com/mmtk/mmtk-core.git?rev=e30d0a0866fe66d352eb09eb7f9e9466dc649172#e30d0a0866fe66d352eb09eb7f9e9466dc649172"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
