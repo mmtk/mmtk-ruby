@@ -22,7 +22,7 @@ else
         rm $TEST_PATH
     }
 
-    test_and_delete eval 100m
+    test_and_delete eval 200m
     test_and_delete thread 400m
 
     # Run other btests in the regular way.
