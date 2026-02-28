@@ -10,9 +10,8 @@ use crate::{
     abi::{self, GCThreadTLS},
     extra_assert, is_mmtk_object_safe, upcalls,
     weak_proc::weak_global_tables::{
-        UpdateCCRefinementTable, UpdateCiTable, UpdateFinalizerAndObjIdTables,
-        UpdateFrozenStringsTable, UpdateGenericFieldsTbl, UpdateGlobalSymbolsTable,
-        UpdateOverloadedCmeTable,
+        UpdateCiTable, UpdateFinalizerAndObjIdTables, UpdateFrozenStringsTable,
+        UpdateGenericFieldsTbl, UpdateGlobalSymbolsTable, UpdateOverloadedCmeTable,
     },
     Ruby,
 };
@@ -115,7 +114,6 @@ impl WeakProcessor {
             // global symbols table specialized
             Box::new(UpdateFinalizerAndObjIdTables) as _,
             Box::new(UpdateGenericFieldsTbl) as _,
-            Box::new(UpdateCCRefinementTable) as _,
             // END: Weak tables
             Box::new(UpdateWbUnprotectedObjectsList) as _,
             Box::new(ProcessWeakReferences) as _,

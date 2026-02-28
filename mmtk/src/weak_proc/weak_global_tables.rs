@@ -111,11 +111,4 @@ define_global_table_processor!(UpdateFrozenStringsTable, {
     );
 });
 
-define_global_table_processor!(UpdateCCRefinementTable, {
-    general_update_weak_table(
-        upcalls().get_cc_refinement_table_size,
-        upcalls().update_cc_refinement_table,
-    );
-});
-
 ///////// END: Simple table updating work packets ////////

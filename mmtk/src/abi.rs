@@ -381,8 +381,6 @@ pub struct RubyUpcalls {
     pub update_generic_fields_table: extern "C" fn(),
     pub get_frozen_strings_table_size: extern "C" fn() -> usize,
     pub update_frozen_strings_table: extern "C" fn(),
-    pub get_cc_refinement_table_size: extern "C" fn() -> usize,
-    pub update_cc_refinement_table: extern "C" fn(),
     // Get tables for specialized processing
     pub get_fstring_table_obj: extern "C" fn() -> NullableObjectReference,
     pub get_global_symbols_table_obj: extern "C" fn() -> NullableObjectReference,
