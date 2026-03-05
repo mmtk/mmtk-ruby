@@ -33,11 +33,11 @@ atomic_refcell = "0.1.9"
 probe = "0.5"
 
 [dependencies.mmtk]
-features = ["is_mmtk_object", "object_pinning", "sticky_immix_non_moving_nursery"]
+features = ["vo_bit", "object_pinning", "sticky_immix_non_moving_nursery"]
 
 # Uncomment the following lines to use mmtk-core from the official repository.
-git = "https://github.com/mmtk/mmtk-core.git"
-rev = "084923f5ee035e25b138661ef936529b7466c2d1"
+git = "https://github.com/wks/mmtk-core.git"
+rev = "70b17d97c704c2f885bb96041abf686a07590530"
 
 # Uncomment the following line to use mmtk-core from a local repository.
 #path = "../../mmtk-core"
