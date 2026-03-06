@@ -36,8 +36,8 @@ probe = "0.5"
 features = ["vo_bit", "object_pinning", "sticky_immix_non_moving_nursery"]
 
 # Uncomment the following lines to use mmtk-core from the official repository.
-git = "https://github.com/mmtk/mmtk-core.git"
-rev = "707facc54d73364340c5a850093510a6051bed89"
+git = "https://github.com/qinsoon/mmtk-core.git"
+rev = "4ea8099033f0c832c1dbe33805eacc8be6826bf3"
 
 # Uncomment the following line to use mmtk-core from a local repository.
 #path = "../../mmtk-core"

@@ -332,7 +332,7 @@ pub extern "C" fn mmtk_get_vo_bit_log_region_size() -> usize {
 
 #[no_mangle]
 pub extern "C" fn mmtk_get_vo_bit_base() -> usize {
-    mmtk::util::metadata::side_metadata::VO_BIT_SIDE_METADATA_ADDR.as_usize()
+    mmtk::util::metadata::side_metadata::vo_bit_side_metadata_addr().as_usize()
 }
 
 #[no_mangle]
