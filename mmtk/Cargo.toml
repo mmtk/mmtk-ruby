@@ -37,7 +37,7 @@ features = ["vo_bit", "object_pinning", "sticky_immix_non_moving_nursery"]
 
 # Uncomment the following lines to use mmtk-core from the official repository.
 git = "https://github.com/qinsoon/mmtk-core.git"
-rev = "4ea8099033f0c832c1dbe33805eacc8be6826bf3"
+rev = "0d591e81380717a957c80fa76a81863d9d2be260"
 
 # Uncomment the following line to use mmtk-core from a local repository.
 #path = "../../mmtk-core"
