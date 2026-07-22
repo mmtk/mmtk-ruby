@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::ffi::CString;
 use std::str::FromStr;
-use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
 use std::thread::JoinHandle;
 
@@ -14,9 +13,7 @@ use crate::ppp::PPPRegistry;
 use crate::weak_proc::WeakProcessor;
 use crate::Ruby;
 
-pub struct RubyBindingFast {
-    pub gc_enabled: AtomicBool,
-}
+pub struct RubyBindingFast {}
 
 impl Default for RubyBindingFast {
     fn default() -> Self {
@@ -26,9 +23,7 @@ impl Default for RubyBindingFast {
 
 impl RubyBindingFast {
     pub const fn new() -> Self {
-        Self {
-            gc_enabled: AtomicBool::new(false),
-        }
+        Self {}
     }
 }
 

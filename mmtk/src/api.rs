@@ -3,7 +3,6 @@
 #![allow(clippy::missing_safety_doc)]
 
 use std::ffi::CStr;
-use std::sync::atomic::Ordering;
 
 use crate::abi;
 use crate::abi::HiddenHeader;
@@ -14,7 +13,6 @@ use crate::binding::RubyBinding;
 use crate::mmtk;
 use crate::Ruby;
 use crate::RubySlot;
-use crate::BINDING_FAST;
 use mmtk::memory_manager;
 use mmtk::memory_manager::mmtk_init;
 use mmtk::util::alloc::AllocatorInfo;
@@ -200,18 +198,18 @@ pub extern "C" fn mmtk_after_fork(tls: VMThread) {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_enable_collection() {
-    BINDING_FAST.gc_enabled.store(true, Ordering::Relaxed);
+pub extern "C" fn mmtk_enable_collection() -> bool {
+    mmtk().enable_collection()
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_disable_collection() {
-    BINDING_FAST.gc_enabled.store(false, Ordering::Relaxed);
+pub extern "C" fn mmtk_disable_collection() -> bool {
+    mmtk().disable_collection().is_ok()
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_is_collection_enabled() -> bool {
-    BINDING_FAST.gc_enabled.load(Ordering::Relaxed)
+    mmtk().is_collection_enabled()
 }
 
 #[no_mangle]
