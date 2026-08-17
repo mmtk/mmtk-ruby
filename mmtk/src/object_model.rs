@@ -16,6 +16,11 @@ impl VMObjectModel {
 impl ObjectModel<Ruby> for VMObjectModel {
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
 
+    // Only plans that need a field-granularity log bit (e.g. LXR) actually reserve this;
+    // none of Ruby's current plans use such a plan.
+    const GLOBAL_FIELD_UNLOG_BIT_SPEC: VMGlobalFieldUnlogBitSpec =
+        VMGlobalFieldUnlogBitSpec::side_after(Self::GLOBAL_LOG_BIT_SPEC.as_spec());
+
     // We overwrite the prepended word which were used to hold object sizes.
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec =
         VMLocalForwardingPointerSpec::in_header(-((OBJREF_OFFSET * BITS_IN_BYTE) as isize));
@@ -79,6 +84,52 @@ impl ObjectModel<Ruby> for VMObjectModel {
         }
 
         to_obj
+    }
+
+    fn try_copy(
+        from: ObjectReference,
+        semantics: CopySemantics,
+        copy_context: &mut GCWorkerCopyContext<Ruby>,
+    ) -> Option<ObjectReference> {
+        let from_acc = RubyObjectAccess::from_objref(from);
+        let has_exivar = from_acc.has_exivar();
+        let from_start = from_acc.obj_start();
+        let object_size = from_acc.object_size();
+        let to_start = copy_context.alloc_copy(from, object_size, MIN_OBJ_ALIGN, 0, semantics);
+        if to_start.is_zero() {
+            return None;
+        }
+        let to_payload = to_start.add(OBJREF_OFFSET);
+        unsafe {
+            copy_nonoverlapping::<u8>(from_start.to_ptr(), to_start.to_mut_ptr(), object_size);
+        }
+        // unsafe: `to_payload`` cannot be zero because `alloc_copy`` never returns zero.
+        let to_obj = unsafe { ObjectReference::from_raw_address_unchecked(to_payload) };
+        copy_context.post_copy(to_obj, object_size, semantics);
+        trace!("Copied object from {} to {}", from, to_obj);
+
+        #[cfg(feature = "clear_old_copy")]
+        {
+            trace!(
+                "Clearing old copy {} ({}-{})",
+                from,
+                from_start,
+                from_start + object_size
+            );
+            // For debug purpose, we clear the old copy so that if the Ruby VM reads from the old
+            // copy again, it will likely result in an error.
+            unsafe { std::ptr::write_bytes::<u8>(from_start.to_mut_ptr(), 0, object_size) }
+        }
+
+        if has_exivar {
+            let mut backwarding_table = crate::binding().backwarding_table.lock().unwrap();
+            trace!("Inserting into backwarding table: from: {from} <- to_obj: {to_obj}");
+            backwarding_table.insert(to_obj, from);
+        } else {
+            trace!("No exivar: from: {from} <- to_obj: {to_obj}");
+        }
+
+        Some(to_obj)
     }
 
     fn copy_to(_from: ObjectReference, _to: ObjectReference, _region: Address) -> Address {
