@@ -7,13 +7,13 @@ use mmtk::{
 };
 
 use crate::{
+    Ruby,
     abi::{self, GCThreadTLS},
     extra_assert, is_mmtk_object_safe, upcalls,
     weak_proc::weak_global_tables::{
         UpdateCiTable, UpdateFinalizerAndObjIdTables, UpdateFrozenStringsTable,
         UpdateGenericFieldsTbl, UpdateGlobalSymbolsTable, UpdateOverloadedCmeTable,
     },
-    Ruby,
 };
 
 pub mod concurrent_set_parallel;
@@ -171,8 +171,7 @@ impl GCWork<Ruby> for ProcessObjFreeCandidates {
                 let new_object = object.forward();
                 trace!(
                     "Forwarding obj_free candidate: {} -> {}",
-                    object,
-                    new_object
+                    object, new_object
                 );
                 new_candidates.push(new_object);
             } else if (upcalls().obj_needs_cleanup_p)(object) {
@@ -215,8 +214,7 @@ impl GCWork<Ruby> for UpdateWbUnprotectedObjectsList {
                 let new_object = object.forward();
                 trace!(
                     "Forwarding WB-unprotected object: {} -> {}",
-                    object,
-                    new_object
+                    object, new_object
                 );
                 objects.insert(new_object);
             } else {
@@ -298,8 +296,7 @@ impl GCWork<Ruby> for ProcessWeakReferences {
                     if let Some(forwarded_target) = target_object.get_forwarded_object() {
                         trace!(
                             "  Forwarded target {} -> {}",
-                            target_object,
-                            forwarded_target
+                            target_object, forwarded_target
                         );
                         forwarded_target
                     } else {

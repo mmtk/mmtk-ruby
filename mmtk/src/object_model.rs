@@ -1,7 +1,7 @@
 use std::ptr::copy_nonoverlapping;
 
-use crate::abi::{RubyObjectAccess, MIN_OBJ_ALIGN, OBJREF_OFFSET};
-use crate::{abi, Ruby};
+use crate::abi::{MIN_OBJ_ALIGN, OBJREF_OFFSET, RubyObjectAccess};
+use crate::{Ruby, abi};
 use mmtk::util::constants::BITS_IN_BYTE;
 use mmtk::util::copy::{CopySemantics, GCWorkerCopyContext};
 use mmtk::util::{Address, ObjectReference};

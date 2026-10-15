@@ -3,7 +3,7 @@ use mmtk::{
     util::VMWorkerThread,
 };
 
-use crate::{abi::GCThreadTLS, upcalls, Ruby};
+use crate::{Ruby, abi::GCThreadTLS, upcalls};
 
 struct BeforeUpdatingJitCode;
 

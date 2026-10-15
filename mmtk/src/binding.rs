@@ -4,14 +4,14 @@ use std::str::FromStr;
 use std::sync::Mutex;
 use std::thread::JoinHandle;
 
-use mmtk::util::ObjectReference;
 use mmtk::MMTK;
+use mmtk::util::ObjectReference;
 
+use crate::Ruby;
 use crate::abi;
 use crate::abi::RubyBindingOptions;
 use crate::ppp::PPPRegistry;
 use crate::weak_proc::WeakProcessor;
-use crate::Ruby;
 
 pub struct RubyBindingFast {}
 

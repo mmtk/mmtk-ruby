@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use mmtk::scheduler::{GCWork, GCWorker, WorkBucketStage};
 
-use crate::{abi::st_table, upcalls, utils::AfterAll, Ruby};
+use crate::{Ruby, abi::st_table, upcalls, utils::AfterAll};
 
 pub fn process_weak_table_chunked(
     name: &'static str,
@@ -18,8 +18,8 @@ pub fn process_weak_table_chunked(
     (upcalls().st_get_size_info)(table, &mut entries_start, &mut entries_bound, &mut bins_num);
     let num_entries = (upcalls().st_get_num_entries)(table);
     debug!(
-            "name: {name}, entries_start: {entries_start}, entries_bound: {entries_bound}, bins_num: {bins_num}, num_entries: {num_entries}"
-        );
+        "name: {name}, entries_start: {entries_start}, entries_bound: {entries_bound}, bins_num: {bins_num}, num_entries: {num_entries}"
+    );
 
     let table_name_ptr = name.as_ptr();
     let table_name_len = name.len();

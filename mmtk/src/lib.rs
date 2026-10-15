@@ -14,10 +14,10 @@ use std::thread::ThreadId;
 
 use abi::RubyUpcalls;
 use binding::{RubyBinding, RubyBindingFast, RubyBindingFastMut};
-use mmtk::util::Address;
-use mmtk::vm::slot::{SimpleSlot, UnimplementedMemorySlice};
-use mmtk::vm::VMBinding;
 use mmtk::MMTK;
+use mmtk::util::Address;
+use mmtk::vm::VMBinding;
+use mmtk::vm::slot::{SimpleSlot, UnimplementedMemorySlice};
 use once_cell::sync::OnceCell;
 
 pub mod abi;

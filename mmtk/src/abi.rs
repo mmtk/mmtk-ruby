@@ -1,5 +1,5 @@
 use crate::api::RubyMutator;
-use crate::{extra_assert, upcalls, Ruby};
+use crate::{Ruby, extra_assert, upcalls};
 use mmtk::scheduler::GCWorker;
 use mmtk::util::api_util::NullableObjectReference;
 use mmtk::util::{Address, ObjectReference, VMMutatorThread, VMWorkerThread};

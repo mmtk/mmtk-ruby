@@ -4,7 +4,7 @@ use mmtk::{
 };
 
 use crate::{
-    abi::GCThreadTLS, extra_assert, is_mmtk_object_safe, upcalls, weak_proc::Forwardable, Ruby,
+    Ruby, abi::GCThreadTLS, extra_assert, is_mmtk_object_safe, upcalls, weak_proc::Forwardable,
 };
 
 pub trait GlobalTableProcessingWork {

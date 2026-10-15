@@ -5,7 +5,7 @@ authors = [
     "Kunshan Wang <wks1986@gmail.com>",
     "Angus Atkinson <4848802+angussidney@users.noreply.github.com>",
     ]
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -36,8 +36,8 @@ probe = "0.5"
 features = ["vo_bit", "object_pinning", "sticky_immix_non_moving_nursery", "non_moving_root"]
 
 # Uncomment the following lines to use mmtk-core from the official repository.
-git = "https://github.com/mmtk/mmtk-core.git"
-rev = "5025c5c6677ccfe6f15be58dab96032e7e78316b"
+git = "https://github.com/wks/mmtk-core.git"
+rev = "009096b9a962f7a596f624e7900a7638210feaa6"
 
 # Uncomment the following line to use mmtk-core from a local repository.
 #path = "../../mmtk-core"

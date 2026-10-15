@@ -1,7 +1,7 @@
 use crate::abi::GCThreadTLS;
 
 use crate::api::RubyMutator;
-use crate::{binding, mmtk, upcalls, Ruby};
+use crate::{Ruby, binding, mmtk, upcalls};
 use mmtk::memory_manager;
 use mmtk::scheduler::*;
 use mmtk::util::{VMMutatorThread, VMThread, VMWorkerThread};

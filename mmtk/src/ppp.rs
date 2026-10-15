@@ -1,13 +1,12 @@
 use std::sync::Mutex;
 
 use mmtk::{
-    memory_manager,
+    MMTK, memory_manager,
     scheduler::{GCWork, GCWorker, WorkBucketStage},
     util::{ObjectReference, VMWorkerThread},
-    MMTK,
 };
 
-use crate::{abi::GCThreadTLS, upcalls, Ruby};
+use crate::{Ruby, abi::GCThreadTLS, upcalls};
 
 pub struct PPPRegistry {
     ppps: Mutex<Vec<ObjectReference>>,

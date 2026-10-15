@@ -1,6 +1,6 @@
 use std::sync::{
-    atomic::{AtomicUsize, Ordering},
     Arc,
+    atomic::{AtomicUsize, Ordering},
 };
 
 use mmtk::{
@@ -8,7 +8,7 @@ use mmtk::{
     util::ObjectReference,
 };
 
-use crate::{abi::ConcurrentSetStats, upcalls, weak_proc::WeakConcurrentSetKind, Ruby};
+use crate::{Ruby, abi::ConcurrentSetStats, upcalls, weak_proc::WeakConcurrentSetKind};
 
 pub fn process_weak_concurrent_set_chunked(
     name: &'static str,

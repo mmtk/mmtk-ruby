@@ -1,7 +1,7 @@
 use crate::abi::GCThreadTLS;
 
 use crate::utils::ChunkedVecCollector;
-use crate::{extra_assert, is_mmtk_object_safe, upcalls, Ruby, RubySlot};
+use crate::{Ruby, RubySlot, extra_assert, is_mmtk_object_safe, upcalls};
 use mmtk::scheduler::{GCWork, GCWorker, WorkBucketStage};
 use mmtk::util::{ObjectReference, VMWorkerThread};
 use mmtk::vm::{ObjectTracer, ObjectTracerContext, RootsWorkFactory, Scanning, SlotVisitor};
@@ -52,8 +52,7 @@ impl Scanning<Ruby> for VMScanning {
             if forwarded_target != target_object {
                 trace!(
                     "  Forwarded target {} -> {}",
-                    target_object,
-                    forwarded_target
+                    target_object, forwarded_target
                 );
             }
             forwarded_target
@@ -99,7 +98,7 @@ impl Scanning<Ruby> for VMScanning {
 
         'gen_wb_unprotected_work: {
             let is_nursery_gc = (crate::mmtk().get_plan().generational())
-                .is_some_and(|gen| gen.is_current_gc_nursery());
+                .is_some_and(|gen_plan| gen_plan.is_current_gc_nursery());
             if !is_nursery_gc {
                 break 'gen_wb_unprotected_work;
             }
